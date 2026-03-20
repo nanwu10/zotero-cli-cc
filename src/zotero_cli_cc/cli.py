@@ -8,6 +8,7 @@ from zotero_cli_cc.commands.search import search_cmd
 from zotero_cli_cc.commands.list_cmd import list_cmd
 from zotero_cli_cc.commands.read import read_cmd
 from zotero_cli_cc.commands.export import export_cmd
+from zotero_cli_cc.commands.note import note_cmd
 
 
 @click.group()
@@ -29,3 +30,4 @@ main.add_command(search_cmd, "search")
 main.add_command(list_cmd, "list")
 main.add_command(read_cmd, "read")
 main.add_command(export_cmd, "export")
+main.add_command(note_cmd, "note")

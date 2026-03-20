@@ -1,0 +1,84 @@
+import pytest
+from unittest.mock import MagicMock, patch
+
+from zotero_cli_cc.core.writer import ZoteroWriter, ZoteroWriteError
+
+
+@patch("zotero_cli_cc.core.writer.zotero.Zotero")
+def test_writer_init(mock_zotero_cls):
+    writer = ZoteroWriter(library_id="123", api_key="abc")
+    mock_zotero_cls.assert_called_once_with("123", "user", "abc")
+
+
+@patch("zotero_cli_cc.core.writer.zotero.Zotero")
+def test_add_note(mock_zotero_cls):
+    mock_zot = MagicMock()
+    mock_zotero_cls.return_value = mock_zot
+    mock_zot.item_template.return_value = {"itemType": "note", "note": "", "parentItem": ""}
+    mock_zot.create_items.return_value = {"successful": {"0": {"key": "N1"}}}
+
+    writer = ZoteroWriter(library_id="123", api_key="abc")
+    result = writer.add_note("PARENT1", "My note content")
+    assert result == "N1"
+    mock_zot.create_items.assert_called_once()
+
+
+@patch("zotero_cli_cc.core.writer.zotero.Zotero")
+def test_add_tags(mock_zotero_cls):
+    mock_zot = MagicMock()
+    mock_zotero_cls.return_value = mock_zot
+    mock_zot.item.return_value = {"key": "K1", "data": {"tags": [{"tag": "old"}]}}
+
+    writer = ZoteroWriter(library_id="123", api_key="abc")
+    writer.add_tags("K1", ["new1", "new2"])
+    mock_zot.update_item.assert_called_once()
+
+
+@patch("zotero_cli_cc.core.writer.zotero.Zotero")
+def test_delete_item(mock_zotero_cls):
+    mock_zot = MagicMock()
+    mock_zotero_cls.return_value = mock_zot
+    mock_zot.item.return_value = {"key": "K1", "data": {"deleted": 0}}
+
+    writer = ZoteroWriter(library_id="123", api_key="abc")
+    writer.delete_item("K1")
+    mock_zot.delete_item.assert_called_once()
+
+
+# --- Error-path tests ---
+
+@patch("zotero_cli_cc.core.writer.zotero.Zotero")
+def test_add_note_network_error(mock_zotero_cls):
+    mock_zot = MagicMock()
+    mock_zotero_cls.return_value = mock_zot
+    mock_zot.item_template.return_value = {"itemType": "note", "note": "", "parentItem": ""}
+    from httpx import ConnectError
+    mock_zot.create_items.side_effect = ConnectError("Network unreachable")
+
+    writer = ZoteroWriter(library_id="123", api_key="abc")
+    with pytest.raises(ZoteroWriteError, match="Network"):
+        writer.add_note("P1", "content")
+
+
+@patch("zotero_cli_cc.core.writer.zotero.Zotero")
+def test_add_note_api_failure(mock_zotero_cls):
+    mock_zot = MagicMock()
+    mock_zotero_cls.return_value = mock_zot
+    mock_zot.item_template.return_value = {"itemType": "note", "note": "", "parentItem": ""}
+    mock_zot.create_items.return_value = {"successful": {}, "failed": {"0": {"message": "Bad request"}}}
+
+    writer = ZoteroWriter(library_id="123", api_key="abc")
+    with pytest.raises(ZoteroWriteError, match="Bad request"):
+        writer.add_note("P1", "content")
+
+
+@patch("zotero_cli_cc.core.writer.zotero.Zotero")
+def test_delete_item_not_found(mock_zotero_cls):
+    from pyzotero.zotero_errors import ResourceNotFoundError
+    mock_zot = MagicMock()
+    mock_zotero_cls.return_value = mock_zot
+    mock_zot.item.side_effect = ResourceNotFoundError("Not found")
+
+    writer = ZoteroWriter(library_id="123", api_key="abc")
+    with pytest.raises(ZoteroWriteError, match="not found"):
+        writer.delete_item("NONEXIST")
