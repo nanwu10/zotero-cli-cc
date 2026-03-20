@@ -1,0 +1,28 @@
+from __future__ import annotations
+
+import click
+
+from zotero_cli_cc.config import load_config, get_data_dir
+from zotero_cli_cc.core.reader import ZoteroReader
+from zotero_cli_cc.formatter import format_items, format_error
+
+
+@click.command("relate")
+@click.argument("key")
+@click.pass_context
+def relate_cmd(ctx: click.Context, key: str) -> None:
+    """Find related items."""
+    cfg = load_config()
+    json_out = ctx.obj.get("json", False)
+    data_dir = get_data_dir(cfg)
+    db_path = data_dir / "zotero.sqlite"
+    reader = ZoteroReader(db_path)
+    try:
+        limit = ctx.obj.get("limit", 20)
+        items = reader.get_related_items(key, limit=limit)
+        if not items:
+            click.echo(format_error(f"No related items found for '{key}'", output_json=json_out))
+            return
+        click.echo(format_items(items, output_json=json_out))
+    finally:
+        reader.close()
