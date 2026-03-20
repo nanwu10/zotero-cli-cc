@@ -1,6 +1,6 @@
 # zotero-cli-cc
 
-[English](#english) | [中文](#中文)
+[中文](#中文) | [English](#english)
 
 ---
 
@@ -38,7 +38,7 @@ zot config init
 
 写操作需要 API Key，在 https://www.zotero.org/settings/keys 获取。
 
-## 13 个命令一览
+## 命令一览
 
 ### 检索与浏览
 
@@ -62,16 +62,12 @@ zot relate ABC123
 ### 笔记与标签
 
 ```bash
-# 查看笔记
+# 查看/添加笔记
 zot note ABC123
-
-# 添加笔记（通过 Web API）
 zot note ABC123 --add "这篇论文提出了新的注意力机制"
 
-# 查看标签
+# 查看/添加/删除标签
 zot tag ABC123
-
-# 添加/删除标签
 zot tag ABC123 --add "重要"
 zot tag ABC123 --remove "待读"
 ```
@@ -79,63 +75,40 @@ zot tag ABC123 --remove "待读"
 ### 引用导出
 
 ```bash
-# 导出 BibTeX
-zot export ABC123
-
-# 导出 JSON
-zot export ABC123 --format json
+zot export ABC123                  # BibTeX
+zot export ABC123 --format json    # JSON
 ```
 
 ### 文献管理
 
 ```bash
-# 通过 DOI 添加文献
-zot add --doi "10.1038/s41586-023-06139-9"
-
-# 通过 URL 添加
-zot add --url "https://arxiv.org/abs/2301.00001"
-
-# 删除文献（移入回收站）
-zot delete ABC123 --yes
+zot add --doi "10.1038/s41586-023-06139-9"    # 通过 DOI 添加
+zot add --url "https://arxiv.org/abs/2301.00001"  # 通过 URL 添加
+zot delete ABC123 --yes                        # 删除（移入回收站）
 ```
 
 ### Collection 管理
 
 ```bash
-# 列出所有 collection（树形展示）
-zot collection list
-
-# 查看 collection 内的文献
-zot collection items COLML01
-
-# 创建新 collection
-zot collection create "新项目"
+zot collection list                # 列出所有 collection（树形展示）
+zot collection items COLML01       # 查看 collection 内的文献
+zot collection create "新项目"      # 创建新 collection
 ```
 
 ### AI 辅助功能
 
 ```bash
-# 结构化摘要（专为 Claude Code 优化的输出格式）
-zot summarize ABC123
-
-# 提取 PDF 全文
-zot pdf ABC123
-
-# 提取指定页
-zot pdf ABC123 --pages 1-5
+zot summarize ABC123               # 结构化摘要（专为 Claude Code 优化）
+zot pdf ABC123                     # 提取 PDF 全文
+zot pdf ABC123 --pages 1-5         # 提取指定页
 ```
 
 ### 全局选项
 
 ```bash
-# JSON 输出（方便 Claude Code 解析）
-zot --json search "attention"
-
-# 限制结果数量
-zot --limit 5 list
-
-# 查看版本
-zot --version
+zot --json search "attention"      # JSON 输出
+zot --limit 5 list                 # 限制结果数量
+zot --version                      # 查看版本
 ```
 
 ## 架构
@@ -162,11 +135,6 @@ zot --version
    │ storage/*.pdf │
    └───────────────┘
 ```
-
-**读写分离设计**：
-- 读操作直接访问 `~/Zotero/zotero.sqlite`（只读模式，即使 Zotero 运行中也能安全读取）
-- 写操作通过 Zotero Web API（变更由 Zotero 服务器验证和同步）
-- PDF 直接从 `~/Zotero/storage/` 目录提取文本
 
 ## 在 Claude Code 中使用
 
@@ -199,45 +167,13 @@ zot --version
 | `ZOT_LIBRARY_ID` | 覆盖 Library ID（写操作） |
 | `ZOT_API_KEY` | 覆盖 API Key（写操作） |
 
-## 支持作者
-
-如果这个项目对你有帮助，欢迎支持作者：
-
-<table>
-  <tr>
-    <td align="center">
-      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/wechat-pay.png" width="180" alt="微信支付">
-      <br>
-      <b>微信支付</b>
-    </td>
-    <td align="center">
-      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/alipay.png" width="180" alt="支付宝">
-      <br>
-      <b>支付宝</b>
-    </td>
-    <td align="center">
-      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/buymeacoffee.png" width="180" alt="Buy Me a Coffee">
-      <br>
-      <b>Buy Me a Coffee</b>
-    </td>
-  </tr>
-</table>
-
-## 许可证
-
-[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) — 免费用于非商业用途。
-
 ---
 
 <a id="english"></a>
 
 ## English
 
-`zotero-cli-cc` is a Zotero CLI tool designed for [Claude Code](https://claude.ai/code).
-
-- **Reads**: Direct SQLite access to `~/Zotero/zotero.sqlite` (read-only, offline, fast)
-- **Writes**: Zotero Web API via pyzotero (safe, Zotero-aware)
-- **PDF**: Direct extraction from `~/Zotero/storage/` via pymupdf
+`zotero-cli-cc` is a Zotero CLI designed for [Claude Code](https://claude.ai/code) — SQLite reads (offline, fast) + Web API writes (safe).
 
 ### Install
 
@@ -271,35 +207,23 @@ zot config init  # Configure API key (write operations only)
 | `zot relate <key>` | Find related items |
 | `zot config` | Configuration management |
 
-### Global Flags
+Global flags: `--json` (JSON output) · `--limit N` (limit results) · `--version`
 
-- `--json` — JSON output
-- `--limit N` — Limit results
-- `--version` — Show version
+---
 
-### Environment Variables
-
-| Variable | Purpose |
-|----------|---------|
-| `ZOT_DATA_DIR` | Override Zotero data directory |
-| `ZOT_LIBRARY_ID` | Override library ID (writes) |
-| `ZOT_API_KEY` | Override API key (writes) |
-
-### Support
-
-If this project helps you, consider supporting the author:
+## 支持作者 / Support
 
 <table>
   <tr>
     <td align="center">
-      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/wechat-pay.png" width="180" alt="WeChat Pay">
+      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/wechat-pay.png" width="180" alt="微信支付">
       <br>
-      <b>WeChat Pay</b>
+      <b>微信支付</b>
     </td>
     <td align="center">
-      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/alipay.png" width="180" alt="Alipay">
+      <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/alipay.png" width="180" alt="支付宝">
       <br>
-      <b>Alipay</b>
+      <b>支付宝</b>
     </td>
     <td align="center">
       <img src="https://raw.githubusercontent.com/Agents365-ai/images_payment/main/qrcode/buymeacoffee.png" width="180" alt="Buy Me a Coffee">
@@ -309,6 +233,6 @@ If this project helps you, consider supporting the author:
   </tr>
 </table>
 
-### License
+## 许可证 / License
 
-[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) — Free for non-commercial use.
+[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) — 免费用于非商业用途 / Free for non-commercial use.
