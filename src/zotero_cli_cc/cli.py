@@ -4,6 +4,10 @@ import click
 
 from zotero_cli_cc import __version__
 from zotero_cli_cc.commands.config import config_group
+from zotero_cli_cc.commands.search import search_cmd
+from zotero_cli_cc.commands.list_cmd import list_cmd
+from zotero_cli_cc.commands.read import read_cmd
+from zotero_cli_cc.commands.export import export_cmd
 
 
 @click.group()
@@ -21,3 +25,7 @@ def main(ctx: click.Context, output_json: bool, limit: int, verbose: bool) -> No
 
 
 main.add_command(config_group, "config")
+main.add_command(search_cmd, "search")
+main.add_command(list_cmd, "list")
+main.add_command(read_cmd, "read")
+main.add_command(export_cmd, "export")
