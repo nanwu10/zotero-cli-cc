@@ -19,6 +19,7 @@ def list_cmd(ctx: click.Context, collection: str | None) -> None:
     try:
         limit = ctx.obj.get("limit", cfg.default_limit)
         result = reader.search("", collection=collection, limit=limit)
-        click.echo(format_items(result.items, output_json=ctx.obj.get("json", False)))
+        detail = ctx.obj.get("detail", "standard")
+        click.echo(format_items(result.items, output_json=ctx.obj.get("json", False), detail=detail))
     finally:
         reader.close()

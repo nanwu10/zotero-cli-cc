@@ -26,6 +26,7 @@ def search_cmd(ctx: click.Context, query: str, collection: str | None) -> None:
             else:
                 click.echo("No results found.")
             return
-        click.echo(format_items(result.items, output_json=ctx.obj.get("json", False)))
+        detail = ctx.obj.get("detail", "standard")
+        click.echo(format_items(result.items, output_json=ctx.obj.get("json", False), detail=detail))
     finally:
         reader.close()

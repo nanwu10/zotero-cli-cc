@@ -84,3 +84,52 @@ def test_format_error_backward_compat_string_json():
     result = format_error("simple error", output_json=True)
     data = json.loads(result)
     assert data["error"] == "simple error"
+
+
+def test_format_items_json_minimal():
+    items = [_make_item()]
+    result = format_items(items, output_json=True, detail="minimal")
+    data = json.loads(result)
+    assert data[0]["key"] == "K1"
+    assert data[0]["title"] == "Test"
+    assert "abstract" not in data[0]
+    assert "extra" not in data[0]
+    assert "collections" not in data[0]
+
+
+def test_format_items_json_full():
+    items = [_make_item()]
+    result = format_items(items, output_json=True, detail="full")
+    data = json.loads(result)
+    assert "abstract" in data[0]
+    assert "extra" in data[0]
+
+
+def test_format_item_detail_minimal():
+    item = _make_item()
+    notes = [Note(key="N1", parent_key="K1", content="A note", tags=[])]
+    result = format_item_detail(item, notes, output_json=False, detail="minimal")
+    assert "Test" in result
+    assert "Abstract" not in result
+    assert "Notes" not in result
+
+
+def test_format_item_detail_json_minimal():
+    item = _make_item()
+    notes = [Note(key="N1", parent_key="K1", content="A note", tags=[])]
+    result = format_item_detail(item, notes, output_json=True, detail="minimal")
+    data = json.loads(result)
+    assert data["key"] == "K1"
+    assert data["title"] == "Test"
+    assert "abstract" not in data
+    assert "notes" not in data
+
+
+def test_format_item_detail_full():
+    item = _make_item()
+    notes = [Note(key="N1", parent_key="K1", content="A note", tags=[])]
+    result = format_item_detail(item, notes, output_json=True, detail="full")
+    data = json.loads(result)
+    assert "abstract" in data
+    assert "notes" in data
+    assert "extra" in data

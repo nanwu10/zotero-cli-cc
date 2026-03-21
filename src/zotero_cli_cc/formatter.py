@@ -11,9 +11,17 @@ from rich.tree import Tree
 from zotero_cli_cc.models import Collection, Item, Note, ErrorInfo
 
 
-def format_items(items: list[Item], output_json: bool = False) -> str:
+def format_items(items: list[Item], output_json: bool = False, detail: str = "standard") -> str:
     if output_json:
-        return json.dumps([asdict(i) for i in items], indent=2, ensure_ascii=False)
+        if detail == "minimal":
+            minimal_keys = {"key", "item_type", "title", "creators", "date"}
+            data = [
+                {k: v for k, v in asdict(i).items() if k in minimal_keys}
+                for i in items
+            ]
+        else:
+            data = [asdict(i) for i in items]
+        return json.dumps(data, indent=2, ensure_ascii=False)
     buf = StringIO()
     console = Console(file=buf, force_terminal=False, width=120)
     table = Table(show_header=True, header_style="bold")
@@ -32,11 +40,18 @@ def format_items(items: list[Item], output_json: bool = False) -> str:
 
 
 def format_item_detail(
-    item: Item, notes: list[Note], output_json: bool = False
+    item: Item, notes: list[Note], output_json: bool = False, detail: str = "standard"
 ) -> str:
     if output_json:
-        data = asdict(item)
-        data["notes"] = [asdict(n) for n in notes]
+        if detail == "minimal":
+            minimal_keys = {"key", "item_type", "title", "creators", "date", "doi", "url"}
+            data = {k: v for k, v in asdict(item).items() if k in minimal_keys}
+        else:
+            data = asdict(item)
+            data["notes"] = [asdict(n) for n in notes]
+            if detail == "full":
+                # extra is already included via asdict; ensure it's present explicitly
+                pass
         return json.dumps(data, indent=2, ensure_ascii=False)
     buf = StringIO()
     console = Console(file=buf, force_terminal=False, width=120)
@@ -47,14 +62,15 @@ def format_item_detail(
         console.print(f"DOI: {item.doi}")
     if item.url:
         console.print(f"URL: {item.url}")
-    if item.tags:
-        console.print(f"Tags: {', '.join(item.tags)}")
-    if item.abstract:
-        console.print(f"\n[bold]Abstract:[/bold]\n{item.abstract}")
-    if notes:
-        console.print(f"\n[bold]Notes ({len(notes)}):[/bold]")
-        for n in notes:
-            console.print(f"  [{n.key}] {n.content[:200]}")
+    if detail != "minimal":
+        if item.tags:
+            console.print(f"Tags: {', '.join(item.tags)}")
+        if item.abstract:
+            console.print(f"\n[bold]Abstract:[/bold]\n{item.abstract}")
+        if notes:
+            console.print(f"\n[bold]Notes ({len(notes)}):[/bold]")
+            for n in notes:
+                console.print(f"  [{n.key}] {n.content[:200]}")
     return buf.getvalue()
 
 

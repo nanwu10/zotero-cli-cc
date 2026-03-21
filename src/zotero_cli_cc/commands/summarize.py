@@ -25,16 +25,18 @@ def summarize_cmd(ctx: click.Context, key: str) -> None:
             click.echo(format_error(f"Item '{key}' not found", output_json=json_out))
             return
         notes = reader.get_notes(key)
+        detail = ctx.obj.get("detail", "standard")
         if json_out:
-            data = {
+            data: dict = {
                 "title": item.title,
                 "authors": [c.full_name for c in item.creators],
                 "year": item.date,
                 "doi": item.doi,
-                "abstract": item.abstract,
-                "tags": item.tags,
-                "notes": [n.content[:500] for n in notes],
             }
+            if detail != "minimal":
+                data["abstract"] = item.abstract
+                data["tags"] = item.tags
+                data["notes"] = [n.content[:500] for n in notes]
             click.echo(json.dumps(data, indent=2, ensure_ascii=False))
         else:
             click.echo(f"Title: {item.title}")
@@ -42,13 +44,14 @@ def summarize_cmd(ctx: click.Context, key: str) -> None:
             click.echo(f"Year: {item.date or 'N/A'}")
             if item.doi:
                 click.echo(f"DOI: {item.doi}")
-            if item.abstract:
-                click.echo(f"Key findings: {item.abstract}")
-            if item.tags:
-                click.echo(f"Tags: {', '.join(item.tags)}")
-            if notes:
-                click.echo(f"Notes ({len(notes)}):")
-                for n in notes:
-                    click.echo(f"  {n.content[:500]}")
+            if detail != "minimal":
+                if item.abstract:
+                    click.echo(f"Key findings: {item.abstract}")
+                if item.tags:
+                    click.echo(f"Tags: {', '.join(item.tags)}")
+                if notes:
+                    click.echo(f"Notes ({len(notes)}):")
+                    for n in notes:
+                        click.echo(f"  {n.content[:500]}")
     finally:
         reader.close()

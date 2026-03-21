@@ -23,6 +23,7 @@ def read_cmd(ctx: click.Context, key: str) -> None:
             click.echo(format_error(f"Item '{key}' not found", output_json=json_out))
             return
         notes = reader.get_notes(key)
-        click.echo(format_item_detail(item, notes, output_json=json_out))
+        detail = ctx.obj.get("detail", "standard")
+        click.echo(format_item_detail(item, notes, output_json=json_out, detail=detail))
     finally:
         reader.close()

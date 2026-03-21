@@ -23,6 +23,7 @@ def relate_cmd(ctx: click.Context, key: str) -> None:
         if not items:
             click.echo(format_error(f"No related items found for '{key}'", output_json=json_out))
             return
-        click.echo(format_items(items, output_json=json_out))
+        detail = ctx.obj.get("detail", "standard")
+        click.echo(format_items(items, output_json=json_out, detail=detail))
     finally:
         reader.close()
