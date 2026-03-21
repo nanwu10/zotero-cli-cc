@@ -59,6 +59,13 @@ class Attachment:
 
 
 @dataclass
+class ErrorInfo:
+    message: str
+    context: str = ""
+    hint: str = ""
+
+
+@dataclass
 class SearchResult:
     items: list[Item]
     total: int

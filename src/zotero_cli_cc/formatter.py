@@ -8,7 +8,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.tree import Tree
 
-from zotero_cli_cc.models import Collection, Item, Note
+from zotero_cli_cc.models import Collection, Item, Note, ErrorInfo
 
 
 def format_items(items: list[Item], output_json: bool = False) -> str:
@@ -87,10 +87,20 @@ def format_notes(notes: list[Note], output_json: bool = False) -> str:
     return buf.getvalue()
 
 
-def format_error(message: str, output_json: bool = False) -> str:
+def format_error(error: str | ErrorInfo, output_json: bool = False) -> str:
+    if isinstance(error, str):
+        error = ErrorInfo(message=error)
     if output_json:
-        return json.dumps({"error": message}, ensure_ascii=False)
-    return f"Error: {message}"
+        data: dict[str, str] = {"error": error.message}
+        if error.context:
+            data["context"] = error.context
+        if error.hint:
+            data["hint"] = error.hint
+        return json.dumps(data, ensure_ascii=False)
+    lines = [f"Error: {error.message}"]
+    if error.hint:
+        lines.append(f"Hint: {error.hint}")
+    return "\n".join(lines)
 
 
 def _collection_to_dict(c: Collection) -> dict:

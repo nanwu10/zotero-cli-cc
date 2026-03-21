@@ -1,6 +1,6 @@
 import json
 
-from zotero_cli_cc.formatter import format_items, format_item_detail, format_collections, format_notes
+from zotero_cli_cc.formatter import format_items, format_item_detail, format_collections, format_notes, format_error
 from zotero_cli_cc.models import Item, Creator, Collection, Note
 
 
@@ -55,3 +55,32 @@ def test_format_notes_json():
     result = format_notes(notes, output_json=True)
     data = json.loads(result)
     assert data[0]["content"] == "Hello"
+
+
+def test_format_error_json_with_hint():
+    from zotero_cli_cc.models import ErrorInfo
+    err = ErrorInfo(message="Item 'XYZ' not found", context="read", hint="Run 'zot search' to find valid keys")
+    result = format_error(err, output_json=True)
+    data = json.loads(result)
+    assert data["error"] == "Item 'XYZ' not found"
+    assert data["context"] == "read"
+    assert data["hint"] == "Run 'zot search' to find valid keys"
+
+
+def test_format_error_text_with_hint():
+    from zotero_cli_cc.models import ErrorInfo
+    err = ErrorInfo(message="Item 'XYZ' not found", hint="Run 'zot search' to find valid keys")
+    result = format_error(err, output_json=False)
+    assert "Error: Item 'XYZ' not found" in result
+    assert "Hint: Run 'zot search' to find valid keys" in result
+
+
+def test_format_error_backward_compat_string():
+    result = format_error("simple error", output_json=False)
+    assert result == "Error: simple error"
+
+
+def test_format_error_backward_compat_string_json():
+    result = format_error("simple error", output_json=True)
+    data = json.loads(result)
+    assert data["error"] == "simple error"
