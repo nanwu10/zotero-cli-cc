@@ -95,6 +95,15 @@ zot collection items COLML01       # 查看 collection 内的文献
 zot collection create "新项目"      # 创建新 collection
 ```
 
+### 配置档案
+
+```bash
+zot config profile list            # 列出所有配置档案
+zot config profile set lab         # 设置默认档案
+zot config cache stats             # 查看 PDF 缓存统计
+zot config cache clear             # 清除 PDF 缓存
+```
+
 ### AI 辅助功能
 
 ```bash
@@ -106,10 +115,44 @@ zot pdf ABC123 --pages 1-5         # 提取指定页
 ### 全局选项
 
 ```bash
-zot --json search "attention"      # JSON 输出
-zot --limit 5 list                 # 限制结果数量
-zot --version                      # 查看版本
+zot --json search "attention"              # JSON 输出
+zot --limit 5 list                         # 限制结果数量
+zot --detail minimal search "attention"    # 精简输出（仅 key/标题/作者/年份）
+zot --detail full read ABC123              # 完整输出（含 extra 字段）
+zot --no-interaction delete ABC123         # 跳过交互确认（AI/脚本模式）
+zot --profile lab search "CRISPR"          # 使用指定配置档案
+zot --version                              # 查看版本
 ```
+
+## 同类工具对比 / Comparison with Similar Tools
+
+| 特性 / Feature | **zotero-cli-cc** | [pyzotero-cli](https://github.com/chriscarrollsmith/pyzotero-cli) | [zotero-cli](https://github.com/jbaiter/zotero-cli) (jbaiter) | [zotero-cli-tool](https://github.com/dhondta/zotero-cli) (dhondta) | [zotero-mcp](https://github.com/54yyyu/zotero-mcp) |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **本地 SQLite 直读 / Direct SQLite Read** | **✅** | ❌ | ❌ (仅缓存) | ❌ | ❌ |
+| **离线可用 / Offline Read** | **✅** | ❌ | ❌ | ❌ | ❌ |
+| **无需启动 Zotero / No Zotero Running** | **✅** | ❌ | ❌ | ❌ | ❌ |
+| **零配置读操作 / Zero-Config Read** | **✅** | ❌ | ❌ | ❌ | ❌ |
+| **PDF 全文提取 / PDF Full-Text** | **✅** | ❌ | ❌ | ❌ | ✅ |
+| **安全写入 (Web API) / Safe Write** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **AI 编码助手集成 / AI Coding Assistant** | **✅ Claude Code** | 部分 | ❌ | ❌ | Claude/ChatGPT |
+| **JSON 输出 / JSON Output** | ✅ | ✅ | ❌ | ❌ | N/A |
+| **笔记管理 / Note Management** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Collection 管理 / Collections** | ✅ | ✅ | ❌ | ❌ | ✅ |
+| **引用导出 / Citation Export** | ✅ BibTeX/JSON | ✅ | ❌ | ✅ Excel | ❌ |
+| **语言 / Language** | Python | Python | Python | Python | Python |
+| **活跃维护 / Active** | ✅ 2026 | ✅ 2025 | ❌ 2024 | ✅ 2026 | ✅ 2026 |
+
+### 为什么选择 zotero-cli-cc？ / Why zotero-cli-cc?
+
+> **唯一一个直接读取本地 SQLite 数据库的活跃 Python CLI 工具。**
+>
+> The only actively maintained Python CLI that reads Zotero's local SQLite database directly.
+
+- **极速**：毫秒级响应，无网络延迟 — Millisecond response, no network latency
+- **离线**：无需网络、无需启动 Zotero 桌面端 — No internet, no Zotero desktop needed
+- **零配置**：安装即用，读操作无需 API Key — Install and go, no API key for reads
+- **AI 原生**：专为 Claude Code 设计，`--json` 输出直接供 AI 解析 — Built for Claude Code, `--json` output for AI consumption
+- **安全**：读写分离架构，写操作通过 Web API 确保 Zotero 数据库完整性 — Read/write separation, writes go through Web API to protect DB integrity
 
 ## 架构
 
@@ -166,6 +209,7 @@ zot --version                      # 查看版本
 | `ZOT_DATA_DIR` | 覆盖 Zotero 数据目录路径 |
 | `ZOT_LIBRARY_ID` | 覆盖 Library ID（写操作） |
 | `ZOT_API_KEY` | 覆盖 API Key（写操作） |
+| `ZOT_PROFILE` | 覆盖默认配置档案 |
 
 ---
 
@@ -206,8 +250,10 @@ zot config init  # Configure API key (write operations only)
 | `zot pdf <key>` | Extract PDF text |
 | `zot relate <key>` | Find related items |
 | `zot config` | Configuration management |
+| `zot config profile` | Manage config profiles |
+| `zot config cache` | Manage PDF text cache |
 
-Global flags: `--json` (JSON output) · `--limit N` (limit results) · `--version`
+Global flags: `--json` (JSON output) · `--limit N` (limit results) · `--detail minimal|standard|full` (detail level) · `--no-interaction` (suppress prompts) · `--profile NAME` (config profile) · `--version`
 
 ---
 

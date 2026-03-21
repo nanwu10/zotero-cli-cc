@@ -34,3 +34,41 @@ def test_config_init_no_interaction_with_options(tmp_path):
                                    "--api-key", "abc"])
     assert "saved" in result.output.lower()
     assert config_file.exists()
+
+
+def test_detail_minimal_flag():
+    runner = CliRunner()
+    result = runner.invoke(main, ["--detail", "minimal", "--help"])
+    assert result.exit_code == 0
+
+
+def test_detail_invalid_value():
+    runner = CliRunner()
+    result = runner.invoke(main, ["--detail", "invalid", "search", "test"])
+    assert result.exit_code != 0
+
+
+def test_profile_flag():
+    runner = CliRunner()
+    result = runner.invoke(main, ["--profile", "test", "--help"])
+    assert result.exit_code == 0
+
+
+def test_cache_clear_command():
+    runner = CliRunner()
+    result = runner.invoke(main, ["config", "cache", "clear"])
+    assert result.exit_code == 0
+
+
+def test_cache_stats_command():
+    runner = CliRunner()
+    result = runner.invoke(main, ["config", "cache", "stats"])
+    assert result.exit_code == 0
+    assert "Cached PDFs" in result.output
+
+
+def test_profile_list_no_profiles():
+    runner = CliRunner()
+    result = runner.invoke(main, ["config", "profile", "list"])
+    # Either shows profiles or says none configured
+    assert result.exit_code == 0
