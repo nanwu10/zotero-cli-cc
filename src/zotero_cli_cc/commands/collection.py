@@ -8,6 +8,7 @@ from zotero_cli_cc.config import load_config, get_data_dir
 from zotero_cli_cc.core.reader import ZoteroReader
 from zotero_cli_cc.core.writer import ZoteroWriter, SYNC_REMINDER
 from zotero_cli_cc.formatter import format_collections, format_items, format_error
+from zotero_cli_cc.models import ErrorInfo
 
 
 @click.group("collection")
@@ -58,7 +59,7 @@ def collection_create(ctx: click.Context, name: str, parent: str | None) -> None
     library_id = os.environ.get("ZOT_LIBRARY_ID", cfg.library_id)
     api_key = os.environ.get("ZOT_API_KEY", cfg.api_key)
     if not library_id or not api_key:
-        click.echo(format_error("Write credentials not configured. Run: zot config init", output_json=json_out))
+        click.echo(format_error(ErrorInfo(message="Write credentials not configured", context="collection", hint="Run 'zot config init' to set up API credentials"), output_json=json_out))
         return
     writer = ZoteroWriter(library_id=library_id, api_key=api_key)
     key = writer.create_collection(name, parent_key=parent)
