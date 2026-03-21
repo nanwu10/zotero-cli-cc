@@ -12,7 +12,7 @@ from zotero_cli_cc.formatter import format_item_detail, format_error
 @click.pass_context
 def read_cmd(ctx: click.Context, key: str) -> None:
     """View item details."""
-    cfg = load_config()
+    cfg = load_config(profile=ctx.obj.get("profile"))
     data_dir = get_data_dir(cfg)
     db_path = data_dir / "zotero.sqlite"
     reader = ZoteroReader(db_path)

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 import click
 
 from zotero_cli_cc import __version__
@@ -25,8 +27,9 @@ from zotero_cli_cc.commands.relate import relate_cmd
 @click.option("--detail", type=click.Choice(["minimal", "standard", "full"]), default="standard", help="Output detail level")
 @click.option("--no-interaction", is_flag=True, help="Suppress interactive prompts for automation")
 @click.option("--verbose", is_flag=True, help="Verbose output")
+@click.option("--profile", default=None, help="Config profile name")
 @click.pass_context
-def main(ctx: click.Context, output_json: bool, limit: int, detail: str, no_interaction: bool, verbose: bool) -> None:
+def main(ctx: click.Context, output_json: bool, limit: int, detail: str, no_interaction: bool, verbose: bool, profile: str | None) -> None:
     """zot — Zotero CLI for Claude Code."""
     ctx.ensure_object(dict)
     ctx.obj["json"] = output_json
@@ -34,6 +37,7 @@ def main(ctx: click.Context, output_json: bool, limit: int, detail: str, no_inte
     ctx.obj["detail"] = detail
     ctx.obj["no_interaction"] = no_interaction
     ctx.obj["verbose"] = verbose
+    ctx.obj["profile"] = profile or os.environ.get("ZOT_PROFILE")
 
 
 main.add_command(config_group, "config")

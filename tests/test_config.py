@@ -65,3 +65,82 @@ def test_get_data_dir_falls_back_to_config(monkeypatch, tmp_path):
     cfg = AppConfig(data_dir=str(tmp_path))
     result = get_data_dir(cfg)
     assert result == tmp_path
+
+
+# --- Multi-profile tests ---
+
+from zotero_cli_cc.config import list_profiles, get_default_profile
+
+
+def test_load_config_with_profile(tmp_path):
+    config_file = tmp_path / "config.toml"
+    config_file.write_text("""
+[default]
+profile = "lab"
+
+[profile.personal]
+library_id = "111"
+api_key = "aaa"
+
+[profile.lab]
+data_dir = "/shared/zotero"
+library_id = "222"
+api_key = "bbb"
+""")
+    cfg = load_config(config_file, profile="lab")
+    assert cfg.library_id == "222"
+    assert cfg.api_key == "bbb"
+    assert cfg.data_dir == "/shared/zotero"
+
+
+def test_load_config_default_profile(tmp_path):
+    config_file = tmp_path / "config.toml"
+    config_file.write_text("""
+[default]
+profile = "personal"
+
+[profile.personal]
+library_id = "111"
+api_key = "aaa"
+""")
+    cfg = load_config(config_file)
+    assert cfg.library_id == "111"
+
+
+def test_load_config_no_profiles_backward_compat(tmp_path):
+    config_file = tmp_path / "config.toml"
+    config_file.write_text("""
+[zotero]
+library_id = "old"
+api_key = "old_key"
+""")
+    cfg = load_config(config_file)
+    assert cfg.library_id == "old"
+
+
+def test_list_profiles_func(tmp_path):
+    config_file = tmp_path / "config.toml"
+    config_file.write_text("""
+[default]
+profile = "personal"
+
+[profile.personal]
+library_id = "111"
+
+[profile.lab]
+library_id = "222"
+""")
+    profiles = list_profiles(config_file)
+    assert set(profiles) == {"personal", "lab"}
+
+
+def test_get_default_profile_func(tmp_path):
+    config_file = tmp_path / "config.toml"
+    config_file.write_text("""
+[default]
+profile = "lab"
+
+[profile.lab]
+library_id = "222"
+""")
+    assert get_default_profile(config_file) == "lab"

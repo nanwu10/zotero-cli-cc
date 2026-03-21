@@ -20,7 +20,7 @@ def collection_group() -> None:
 @click.pass_context
 def collection_list(ctx: click.Context) -> None:
     """List all collections."""
-    cfg = load_config()
+    cfg = load_config(profile=ctx.obj.get("profile"))
     data_dir = get_data_dir(cfg)
     db_path = data_dir / "zotero.sqlite"
     reader = ZoteroReader(db_path)
@@ -36,7 +36,7 @@ def collection_list(ctx: click.Context) -> None:
 @click.pass_context
 def collection_items(ctx: click.Context, key: str) -> None:
     """List items in a collection."""
-    cfg = load_config()
+    cfg = load_config(profile=ctx.obj.get("profile"))
     data_dir = get_data_dir(cfg)
     db_path = data_dir / "zotero.sqlite"
     reader = ZoteroReader(db_path)
@@ -53,7 +53,7 @@ def collection_items(ctx: click.Context, key: str) -> None:
 @click.pass_context
 def collection_create(ctx: click.Context, name: str, parent: str | None) -> None:
     """Create a new collection."""
-    cfg = load_config()
+    cfg = load_config(profile=ctx.obj.get("profile"))
     json_out = ctx.obj.get("json", False)
     library_id = os.environ.get("ZOT_LIBRARY_ID", cfg.library_id)
     api_key = os.environ.get("ZOT_API_KEY", cfg.api_key)

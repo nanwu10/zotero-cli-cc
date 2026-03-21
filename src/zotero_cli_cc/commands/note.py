@@ -16,7 +16,7 @@ from zotero_cli_cc.formatter import format_notes, format_error
 @click.pass_context
 def note_cmd(ctx: click.Context, key: str, content: str | None) -> None:
     """View or add notes for an item."""
-    cfg = load_config()
+    cfg = load_config(profile=ctx.obj.get("profile"))
     json_out = ctx.obj.get("json", False)
 
     if content:

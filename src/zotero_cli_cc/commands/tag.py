@@ -18,7 +18,7 @@ from zotero_cli_cc.formatter import format_error
 @click.pass_context
 def tag_cmd(ctx: click.Context, key: str, add_tag: str | None, remove_tag: str | None) -> None:
     """View or manage tags for an item."""
-    cfg = load_config()
+    cfg = load_config(profile=ctx.obj.get("profile"))
     json_out = ctx.obj.get("json", False)
 
     if add_tag or remove_tag:

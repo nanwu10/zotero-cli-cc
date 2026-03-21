@@ -12,7 +12,7 @@ from zotero_cli_cc.formatter import format_items
 @click.pass_context
 def list_cmd(ctx: click.Context, collection: str | None) -> None:
     """List items in the Zotero library."""
-    cfg = load_config()
+    cfg = load_config(profile=ctx.obj.get("profile"))
     data_dir = get_data_dir(cfg)
     db_path = data_dir / "zotero.sqlite"
     reader = ZoteroReader(db_path)

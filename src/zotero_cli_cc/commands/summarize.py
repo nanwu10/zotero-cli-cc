@@ -14,7 +14,7 @@ from zotero_cli_cc.formatter import format_error
 @click.pass_context
 def summarize_cmd(ctx: click.Context, key: str) -> None:
     """Output a structured summary for Claude Code consumption."""
-    cfg = load_config()
+    cfg = load_config(profile=ctx.obj.get("profile"))
     json_out = ctx.obj.get("json", False)
     data_dir = get_data_dir(cfg)
     db_path = data_dir / "zotero.sqlite"

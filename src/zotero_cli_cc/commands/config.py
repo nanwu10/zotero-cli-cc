@@ -4,7 +4,9 @@ from pathlib import Path
 
 import click
 
-from zotero_cli_cc.config import AppConfig, load_config, save_config, CONFIG_FILE
+import re
+
+from zotero_cli_cc.config import AppConfig, load_config, save_config, CONFIG_FILE, list_profiles, get_default_profile
 
 
 @click.group("config")
@@ -57,3 +59,44 @@ def config_show(config_path: str | None) -> None:
     click.echo(f"Format:     {cfg.default_format}")
     click.echo(f"Limit:      {cfg.default_limit}")
     click.echo(f"Export:     {cfg.default_export_style}")
+
+
+@config_group.group("profile")
+def profile_group() -> None:
+    """Manage configuration profiles."""
+    pass
+
+
+@profile_group.command("list")
+@click.option("--config-path", type=click.Path(), default=None)
+def profile_list(config_path: str | None) -> None:
+    """List all profiles."""
+    path = Path(config_path) if config_path else CONFIG_FILE
+    profiles = list_profiles(path)
+    default = get_default_profile(path)
+    if not profiles:
+        click.echo("No profiles configured.")
+        return
+    for p in profiles:
+        marker = " (default)" if p == default else ""
+        click.echo(f"  {p}{marker}")
+
+
+@profile_group.command("set")
+@click.argument("name")
+@click.option("--config-path", type=click.Path(), default=None)
+def profile_set(name: str, config_path: str | None) -> None:
+    """Set the default profile."""
+    path = Path(config_path) if config_path else CONFIG_FILE
+    from zotero_cli_cc.formatter import format_error
+    profiles = list_profiles(path)
+    if name not in profiles:
+        click.echo(format_error(f"Profile '{name}' not found. Available: {', '.join(profiles)}"))
+        return
+    content = path.read_text()
+    if '[default]' in content:
+        content = re.sub(r'(profile\s*=\s*)"[^"]*"', f'\\1"{name}"', content)
+    else:
+        content = f'[default]\nprofile = "{name}"\n\n' + content
+    path.write_text(content)
+    click.echo(f"Default profile set to '{name}'.")

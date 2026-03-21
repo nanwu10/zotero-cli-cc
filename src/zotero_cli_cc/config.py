@@ -33,12 +33,30 @@ class AppConfig:
         return bool(self.library_id and self.api_key)
 
 
-def load_config(path: Path | None = None) -> AppConfig:
+def load_config(path: Path | None = None, profile: str | None = None) -> AppConfig:
     path = path or CONFIG_FILE
     if not path.exists():
         return AppConfig()
     with open(path, "rb") as f:
         data = tomllib.load(f)
+
+    # New profile-based config
+    if "profile" in data:
+        profile_name = profile or data.get("default", {}).get("profile", "")
+        if profile_name and profile_name in data["profile"]:
+            p = data["profile"][profile_name]
+            output = p.get("output", data.get("output", {}))
+            export = p.get("export", data.get("export", {}))
+            return AppConfig(
+                data_dir=p.get("data_dir", ""),
+                library_id=p.get("library_id", ""),
+                api_key=p.get("api_key", ""),
+                default_format=output.get("default_format", "table"),
+                default_limit=output.get("limit", 50),
+                default_export_style=export.get("default_style", "bibtex"),
+            )
+
+    # Backward-compatible flat config
     zotero = data.get("zotero", {})
     output = data.get("output", {})
     export = data.get("export", {})
@@ -50,6 +68,26 @@ def load_config(path: Path | None = None) -> AppConfig:
         default_limit=output.get("limit", 50),
         default_export_style=export.get("default_style", "bibtex"),
     )
+
+
+def list_profiles(path: Path | None = None) -> list[str]:
+    """List all profile names from config."""
+    path = path or CONFIG_FILE
+    if not path.exists():
+        return []
+    with open(path, "rb") as f:
+        data = tomllib.load(f)
+    return list(data.get("profile", {}).keys())
+
+
+def get_default_profile(path: Path | None = None) -> str:
+    """Get the default profile name from config."""
+    path = path or CONFIG_FILE
+    if not path.exists():
+        return ""
+    with open(path, "rb") as f:
+        data = tomllib.load(f)
+    return data.get("default", {}).get("profile", "")
 
 
 def save_config(config: AppConfig, path: Path | None = None) -> None:

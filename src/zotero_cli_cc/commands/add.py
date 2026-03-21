@@ -15,7 +15,7 @@ from zotero_cli_cc.formatter import format_error
 @click.pass_context
 def add_cmd(ctx: click.Context, doi: str | None, url: str | None) -> None:
     """Add an item to the Zotero library."""
-    cfg = load_config()
+    cfg = load_config(profile=ctx.obj.get("profile"))
     json_out = ctx.obj.get("json", False)
     library_id = os.environ.get("ZOT_LIBRARY_ID", cfg.library_id)
     api_key = os.environ.get("ZOT_API_KEY", cfg.api_key)

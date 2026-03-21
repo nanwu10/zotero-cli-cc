@@ -15,7 +15,7 @@ from zotero_cli_cc.formatter import format_error
 @click.pass_context
 def export_cmd(ctx: click.Context, key: str, fmt: str) -> None:
     """Export citation."""
-    cfg = load_config()
+    cfg = load_config(profile=ctx.obj.get("profile"))
     data_dir = get_data_dir(cfg)
     db_path = data_dir / "zotero.sqlite"
     reader = ZoteroReader(db_path)

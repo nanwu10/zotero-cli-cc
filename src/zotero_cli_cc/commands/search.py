@@ -13,7 +13,7 @@ from zotero_cli_cc.formatter import format_items
 @click.pass_context
 def search_cmd(ctx: click.Context, query: str, collection: str | None) -> None:
     """Search the Zotero library."""
-    cfg = load_config()
+    cfg = load_config(profile=ctx.obj.get("profile"))
     data_dir = get_data_dir(cfg)
     db_path = data_dir / "zotero.sqlite"
     reader = ZoteroReader(db_path)

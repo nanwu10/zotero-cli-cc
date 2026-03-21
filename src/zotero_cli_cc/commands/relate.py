@@ -12,7 +12,7 @@ from zotero_cli_cc.formatter import format_items, format_error
 @click.pass_context
 def relate_cmd(ctx: click.Context, key: str) -> None:
     """Find related items."""
-    cfg = load_config()
+    cfg = load_config(profile=ctx.obj.get("profile"))
     json_out = ctx.obj.get("json", False)
     data_dir = get_data_dir(cfg)
     db_path = data_dir / "zotero.sqlite"
