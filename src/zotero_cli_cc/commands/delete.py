@@ -22,7 +22,8 @@ def delete_cmd(ctx: click.Context, key: str, yes: bool) -> None:
     if not library_id or not api_key:
         click.echo(format_error("Write credentials not configured. Run: zot config init", output_json=json_out))
         return
-    if not yes:
+    no_interaction = ctx.obj.get("no_interaction", False)
+    if not yes and not no_interaction:
         if not click.confirm(f"Delete item '{key}'?"):
             click.echo("Cancelled.")
             return

@@ -15,11 +15,31 @@ def config_group() -> None:
 
 @config_group.command("init")
 @click.option("--config-path", type=click.Path(), default=None, help="Config file path")
-def config_init(config_path: str | None) -> None:
+@click.option("--library-id", default=None, help="Zotero library ID")
+@click.option("--api-key", default=None, help="Zotero API key")
+@click.pass_context
+def config_init(ctx: click.Context, config_path: str | None, library_id: str | None, api_key: str | None) -> None:
     """Initialize configuration interactively."""
     path = Path(config_path) if config_path else CONFIG_FILE
-    library_id = click.prompt("Zotero library ID")
-    api_key = click.prompt("Zotero API key")
+    no_interaction = ctx.obj.get("no_interaction", False) if ctx.obj else False
+    json_out = ctx.obj.get("json", False) if ctx.obj else False
+    if no_interaction:
+        if not library_id or not api_key:
+            from zotero_cli_cc.models import ErrorInfo
+            from zotero_cli_cc.formatter import format_error
+            click.echo(format_error(
+                ErrorInfo(
+                    message="--library-id and --api-key required with --no-interaction",
+                    context="config init",
+                    hint="Provide --library-id and --api-key, or run without --no-interaction",
+                ),
+                output_json=json_out,
+            ))
+            ctx.exit(1)
+            return
+    else:
+        library_id = library_id or click.prompt("Zotero library ID")
+        api_key = api_key or click.prompt("Zotero API key")
     cfg = AppConfig(library_id=library_id, api_key=api_key)
     save_config(cfg, path)
     click.echo(f"Configuration saved to {path}")
