@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 from click.testing import CliRunner
 
@@ -9,7 +8,8 @@ from zotero_cli_cc.cli import main
 def test_summarize(test_db_path):
     runner = CliRunner()
     result = runner.invoke(
-        main, ["summarize", "ATTN001"],
+        main,
+        ["summarize", "ATTN001"],
         env={"ZOT_DATA_DIR": str(test_db_path.parent)},
     )
     assert result.exit_code == 0
@@ -20,7 +20,8 @@ def test_summarize(test_db_path):
 def test_summarize_json(test_db_path):
     runner = CliRunner()
     result = runner.invoke(
-        main, ["--json", "summarize", "ATTN001"],
+        main,
+        ["--json", "summarize", "ATTN001"],
         env={"ZOT_DATA_DIR": str(test_db_path.parent)},
     )
     data = json.loads(result.output)
@@ -30,7 +31,8 @@ def test_summarize_json(test_db_path):
 def test_relate(test_db_path):
     runner = CliRunner()
     result = runner.invoke(
-        main, ["relate", "ATTN001"],
+        main,
+        ["relate", "ATTN001"],
         env={"ZOT_DATA_DIR": str(test_db_path.parent)},
     )
     assert result.exit_code == 0
@@ -40,7 +42,8 @@ def test_relate(test_db_path):
 def test_pdf_no_attachment(test_db_path):
     runner = CliRunner()
     result = runner.invoke(
-        main, ["pdf", "DEEP003"],
+        main,
+        ["pdf", "DEEP003"],
         env={"ZOT_DATA_DIR": str(test_db_path.parent)},
     )
     assert result.exit_code == 0
@@ -50,7 +53,8 @@ def test_pdf_no_attachment(test_db_path):
 def test_pdf_invalid_page_range_non_numeric(test_db_path):
     runner = CliRunner()
     result = runner.invoke(
-        main, ["pdf", "--pages", "abc", "DEEP003"],
+        main,
+        ["pdf", "--pages", "abc", "DEEP003"],
         env={"ZOT_DATA_DIR": str(test_db_path.parent)},
     )
     assert result.exit_code == 0
@@ -60,7 +64,8 @@ def test_pdf_invalid_page_range_non_numeric(test_db_path):
 def test_pdf_invalid_page_range_reversed(test_db_path):
     runner = CliRunner()
     result = runner.invoke(
-        main, ["pdf", "--pages", "5-2", "DEEP003"],
+        main,
+        ["pdf", "--pages", "5-2", "DEEP003"],
         env={"ZOT_DATA_DIR": str(test_db_path.parent)},
     )
     assert result.exit_code == 0
@@ -70,7 +75,8 @@ def test_pdf_invalid_page_range_reversed(test_db_path):
 def test_pdf_invalid_page_range_zero(test_db_path):
     runner = CliRunner()
     result = runner.invoke(
-        main, ["pdf", "--pages", "0-3", "DEEP003"],
+        main,
+        ["pdf", "--pages", "0-3", "DEEP003"],
         env={"ZOT_DATA_DIR": str(test_db_path.parent)},
     )
     assert result.exit_code == 0

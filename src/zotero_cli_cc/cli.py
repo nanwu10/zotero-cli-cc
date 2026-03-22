@@ -5,36 +5,46 @@ import os
 import click
 
 from zotero_cli_cc import __version__
-from zotero_cli_cc.commands.config import config_group
-from zotero_cli_cc.commands.search import search_cmd
-from zotero_cli_cc.commands.list_cmd import list_cmd
-from zotero_cli_cc.commands.read import read_cmd
-from zotero_cli_cc.commands.export import export_cmd
-from zotero_cli_cc.commands.note import note_cmd
 from zotero_cli_cc.commands.add import add_cmd
-from zotero_cli_cc.commands.delete import delete_cmd
-from zotero_cli_cc.commands.tag import tag_cmd
 from zotero_cli_cc.commands.collection import collection_group
+from zotero_cli_cc.commands.completions import completions_cmd
+from zotero_cli_cc.commands.config import config_group
+from zotero_cli_cc.commands.delete import delete_cmd
+from zotero_cli_cc.commands.export import export_cmd
+from zotero_cli_cc.commands.list_cmd import list_cmd
+from zotero_cli_cc.commands.mcp import mcp_group
+from zotero_cli_cc.commands.note import note_cmd
+from zotero_cli_cc.commands.open_cmd import open_cmd
+from zotero_cli_cc.commands.pdf import pdf_cmd
+from zotero_cli_cc.commands.read import read_cmd
+from zotero_cli_cc.commands.relate import relate_cmd
+from zotero_cli_cc.commands.search import search_cmd
+from zotero_cli_cc.commands.stats import stats_cmd
 from zotero_cli_cc.commands.summarize import summarize_cmd
 from zotero_cli_cc.commands.summarize_all import summarize_all_cmd
-from zotero_cli_cc.commands.pdf import pdf_cmd
-from zotero_cli_cc.commands.relate import relate_cmd
-from zotero_cli_cc.commands.mcp import mcp_group
-from zotero_cli_cc.commands.stats import stats_cmd
-from zotero_cli_cc.commands.open_cmd import open_cmd
-from zotero_cli_cc.commands.completions import completions_cmd
+from zotero_cli_cc.commands.tag import tag_cmd
 
 
 @click.group()
 @click.version_option(version=__version__, prog_name="zot")
 @click.option("--json", "output_json", is_flag=True, help="Output as JSON")
 @click.option("--limit", default=50, help="Limit results")
-@click.option("--detail", type=click.Choice(["minimal", "standard", "full"]), default="standard", help="Output detail level")
+@click.option(
+    "--detail", type=click.Choice(["minimal", "standard", "full"]), default="standard", help="Output detail level"
+)
 @click.option("--no-interaction", is_flag=True, help="Suppress interactive prompts for automation")
 @click.option("--verbose", is_flag=True, help="Verbose output")
 @click.option("--profile", default=None, help="Config profile name")
 @click.pass_context
-def main(ctx: click.Context, output_json: bool, limit: int, detail: str, no_interaction: bool, verbose: bool, profile: str | None) -> None:
+def main(
+    ctx: click.Context,
+    output_json: bool,
+    limit: int,
+    detail: str,
+    no_interaction: bool,
+    verbose: bool,
+    profile: str | None,
+) -> None:
     """zot — Zotero CLI for Claude Code."""
     ctx.ensure_object(dict)
     ctx.obj["json"] = output_json

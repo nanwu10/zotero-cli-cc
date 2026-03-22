@@ -5,7 +5,7 @@ import os
 import click
 
 from zotero_cli_cc.config import load_config
-from zotero_cli_cc.core.writer import ZoteroWriter, ZoteroWriteError, SYNC_REMINDER
+from zotero_cli_cc.core.writer import SYNC_REMINDER, ZoteroWriteError, ZoteroWriter
 from zotero_cli_cc.formatter import format_error
 from zotero_cli_cc.models import ErrorInfo
 
@@ -29,7 +29,16 @@ def delete_cmd(ctx: click.Context, keys: tuple[str, ...], yes: bool, dry_run: bo
     library_id = os.environ.get("ZOT_LIBRARY_ID", cfg.library_id)
     api_key = os.environ.get("ZOT_API_KEY", cfg.api_key)
     if not library_id or not api_key:
-        click.echo(format_error(ErrorInfo(message="Write credentials not configured", context="delete", hint="Run 'zot config init' to set up API credentials"), output_json=json_out))
+        click.echo(
+            format_error(
+                ErrorInfo(
+                    message="Write credentials not configured",
+                    context="delete",
+                    hint="Run 'zot config init' to set up API credentials",
+                ),
+                output_json=json_out,
+            )
+        )
         return
     no_interaction = ctx.obj.get("no_interaction", False)
     if not yes and not no_interaction:
@@ -45,6 +54,10 @@ def delete_cmd(ctx: click.Context, keys: tuple[str, ...], yes: bool, dry_run: bo
             click.echo(f"Item '{key}' moved to trash.")
         except ZoteroWriteError as e:
             failed.append(key)
-            click.echo(format_error(ErrorInfo(message=str(e), context="delete", hint=f"Failed for key '{key}'"), output_json=json_out))
+            click.echo(
+                format_error(
+                    ErrorInfo(message=str(e), context="delete", hint=f"Failed for key '{key}'"), output_json=json_out
+                )
+            )
     if not failed:
         click.echo(SYNC_REMINDER)

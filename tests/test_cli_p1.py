@@ -1,5 +1,4 @@
-import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from click.testing import CliRunner
 
@@ -53,7 +52,8 @@ def test_tag_add(mock_writer_cls):
 def test_tag_list(test_db_path):
     runner = CliRunner()
     result = runner.invoke(
-        main, ["tag", "ATTN001"],
+        main,
+        ["tag", "ATTN001"],
         env={"ZOT_DATA_DIR": str(test_db_path.parent)},
     )
     assert result.exit_code == 0
@@ -63,7 +63,8 @@ def test_tag_list(test_db_path):
 def test_collection_list(test_db_path):
     runner = CliRunner()
     result = runner.invoke(
-        main, ["collection", "list"],
+        main,
+        ["collection", "list"],
         env={"ZOT_DATA_DIR": str(test_db_path.parent)},
     )
     assert result.exit_code == 0

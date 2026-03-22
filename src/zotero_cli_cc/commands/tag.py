@@ -5,9 +5,9 @@ import os
 
 import click
 
-from zotero_cli_cc.config import load_config, get_data_dir
+from zotero_cli_cc.config import get_data_dir, load_config
 from zotero_cli_cc.core.reader import ZoteroReader
-from zotero_cli_cc.core.writer import ZoteroWriter, ZoteroWriteError, SYNC_REMINDER
+from zotero_cli_cc.core.writer import SYNC_REMINDER, ZoteroWriteError, ZoteroWriter
 from zotero_cli_cc.formatter import format_error
 from zotero_cli_cc.models import ErrorInfo
 
@@ -18,7 +18,9 @@ from zotero_cli_cc.models import ErrorInfo
 @click.option("--remove", "remove_tag", default=None, help="Remove a tag")
 @click.option("--dry-run", is_flag=True, help="Show what would change without executing")
 @click.pass_context
-def tag_cmd(ctx: click.Context, keys: tuple[str, ...], add_tag: str | None, remove_tag: str | None, dry_run: bool) -> None:
+def tag_cmd(
+    ctx: click.Context, keys: tuple[str, ...], add_tag: str | None, remove_tag: str | None, dry_run: bool
+) -> None:
     """View or manage tags for one or more items.
 
     View tags: zot tag KEY
@@ -40,7 +42,16 @@ def tag_cmd(ctx: click.Context, keys: tuple[str, ...], add_tag: str | None, remo
         library_id = os.environ.get("ZOT_LIBRARY_ID", cfg.library_id)
         api_key = os.environ.get("ZOT_API_KEY", cfg.api_key)
         if not library_id or not api_key:
-            click.echo(format_error(ErrorInfo(message="Write credentials not configured", context="tag", hint="Run 'zot config init' to set up API credentials"), output_json=json_out))
+            click.echo(
+                format_error(
+                    ErrorInfo(
+                        message="Write credentials not configured",
+                        context="tag",
+                        hint="Run 'zot config init' to set up API credentials",
+                    ),
+                    output_json=json_out,
+                )
+            )
             return
         writer = ZoteroWriter(library_id=library_id, api_key=api_key)
         failed = []
@@ -54,7 +65,11 @@ def tag_cmd(ctx: click.Context, keys: tuple[str, ...], add_tag: str | None, remo
                     click.echo(f"Tag '{remove_tag}' removed from '{key}'.")
             except ZoteroWriteError as e:
                 failed.append(key)
-                click.echo(format_error(ErrorInfo(message=str(e), context="tag", hint=f"Failed for key '{key}'"), output_json=json_out))
+                click.echo(
+                    format_error(
+                        ErrorInfo(message=str(e), context="tag", hint=f"Failed for key '{key}'"), output_json=json_out
+                    )
+                )
         if not failed:
             click.echo(SYNC_REMINDER)
     else:
@@ -66,7 +81,16 @@ def tag_cmd(ctx: click.Context, keys: tuple[str, ...], add_tag: str | None, remo
             for key in keys:
                 item = reader.get_item(key)
                 if item is None:
-                    click.echo(format_error(ErrorInfo(message=f"Item '{key}' not found", context="tag", hint="Run 'zot search' to find valid item keys"), output_json=json_out))
+                    click.echo(
+                        format_error(
+                            ErrorInfo(
+                                message=f"Item '{key}' not found",
+                                context="tag",
+                                hint="Run 'zot search' to find valid item keys",
+                            ),
+                            output_json=json_out,
+                        )
+                    )
                     continue
                 if json_out:
                     click.echo(json.dumps({"key": key, "tags": item.tags}))

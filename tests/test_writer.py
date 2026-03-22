@@ -1,12 +1,13 @@
-import pytest
 from unittest.mock import MagicMock, patch
 
-from zotero_cli_cc.core.writer import ZoteroWriter, ZoteroWriteError
+import pytest
+
+from zotero_cli_cc.core.writer import ZoteroWriteError, ZoteroWriter
 
 
 @patch("zotero_cli_cc.core.writer.zotero.Zotero")
 def test_writer_init(mock_zotero_cls):
-    writer = ZoteroWriter(library_id="123", api_key="abc")
+    ZoteroWriter(library_id="123", api_key="abc")
     mock_zotero_cls.assert_called_once_with("123", "user", "abc")
 
 
@@ -47,12 +48,14 @@ def test_delete_item(mock_zotero_cls):
 
 # --- Error-path tests ---
 
+
 @patch("zotero_cli_cc.core.writer.zotero.Zotero")
 def test_add_note_network_error(mock_zotero_cls):
     mock_zot = MagicMock()
     mock_zotero_cls.return_value = mock_zot
     mock_zot.item_template.return_value = {"itemType": "note", "note": "", "parentItem": ""}
     from httpx import ConnectError
+
     mock_zot.create_items.side_effect = ConnectError("Network unreachable")
 
     writer = ZoteroWriter(library_id="123", api_key="abc")
@@ -75,6 +78,7 @@ def test_add_note_api_failure(mock_zotero_cls):
 @patch("zotero_cli_cc.core.writer.zotero.Zotero")
 def test_delete_item_not_found(mock_zotero_cls):
     from pyzotero.zotero_errors import ResourceNotFoundError
+
     mock_zot = MagicMock()
     mock_zotero_cls.return_value = mock_zot
     mock_zot.item.side_effect = ResourceNotFoundError("Not found")
@@ -85,6 +89,7 @@ def test_delete_item_not_found(mock_zotero_cls):
 
 
 # --- Collection management tests ---
+
 
 @patch("zotero_cli_cc.core.writer.zotero.Zotero")
 def test_delete_collection(mock_zotero_cls):
@@ -101,6 +106,7 @@ def test_delete_collection(mock_zotero_cls):
 @patch("zotero_cli_cc.core.writer.zotero.Zotero")
 def test_delete_collection_not_found(mock_zotero_cls):
     from pyzotero.zotero_errors import ResourceNotFoundError
+
     mock_zot = MagicMock()
     mock_zotero_cls.return_value = mock_zot
     mock_zot.collection.side_effect = ResourceNotFoundError("Not found")
@@ -128,6 +134,7 @@ def test_rename_collection(mock_zotero_cls):
 @patch("zotero_cli_cc.core.writer.zotero.Zotero")
 def test_rename_collection_not_found(mock_zotero_cls):
     from pyzotero.zotero_errors import ResourceNotFoundError
+
     mock_zot = MagicMock()
     mock_zotero_cls.return_value = mock_zot
     mock_zot.collection.side_effect = ResourceNotFoundError("Not found")

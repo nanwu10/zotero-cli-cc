@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import click
 
-
 SHELLS = {
     "bash": {
         "var": "_ZOT_COMPLETE=bash_source",
@@ -35,13 +34,16 @@ def completions_cmd(shell: str) -> None:
       zot completions zsh >> ~/.zshrc
       zot completions fish > ~/.config/fish/completions/zot.fish
     """
-    import subprocess
     import os
+    import subprocess
 
     env = os.environ.copy()
     env[SHELLS[shell]["var"].split("=")[0]] = SHELLS[shell]["var"].split("=")[1]
     result = subprocess.run(
-        ["zot"], env=env, capture_output=True, text=True,
+        ["zot"],
+        env=env,
+        capture_output=True,
+        text=True,
     )
     if result.stdout:
         click.echo(result.stdout)

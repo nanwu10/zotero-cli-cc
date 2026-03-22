@@ -1,6 +1,5 @@
 import json
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from click.testing import CliRunner
 
@@ -10,7 +9,8 @@ from zotero_cli_cc.cli import main
 def test_note_read(test_db_path):
     runner = CliRunner()
     result = runner.invoke(
-        main, ["note", "ATTN001"],
+        main,
+        ["note", "ATTN001"],
         env={"ZOT_DATA_DIR": str(test_db_path.parent)},
     )
     assert result.exit_code == 0
@@ -20,7 +20,8 @@ def test_note_read(test_db_path):
 def test_note_read_json(test_db_path):
     runner = CliRunner()
     result = runner.invoke(
-        main, ["--json", "note", "ATTN001"],
+        main,
+        ["--json", "note", "ATTN001"],
         env={"ZOT_DATA_DIR": str(test_db_path.parent)},
     )
     assert result.exit_code == 0

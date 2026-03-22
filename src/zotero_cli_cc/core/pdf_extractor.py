@@ -7,6 +7,7 @@ import pymupdf
 
 class PdfExtractionError(Exception):
     """Raised when PDF text extraction fails."""
+
     pass
 
 
@@ -24,9 +25,7 @@ def extract_text_from_pdf(
         if pages:
             start, end = pages
             if start > len(doc):
-                raise PdfExtractionError(
-                    f"Start page {start} exceeds document length ({len(doc)} pages)"
-                )
+                raise PdfExtractionError(f"Start page {start} exceeds document length ({len(doc)} pages)")
             page_range = range(start - 1, min(end, len(doc)))
         else:
             page_range = range(len(doc))

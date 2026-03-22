@@ -1,8 +1,8 @@
-import pytest
 from pathlib import Path
 
+import pytest
+
 from zotero_cli_cc.core.reader import ZoteroReader
-from zotero_cli_cc.models import Item, Note, Collection, Attachment
 
 
 @pytest.fixture
@@ -138,6 +138,7 @@ class TestExportCitation:
 
     def test_export_csl_json(self, reader: ZoteroReader):
         import json
+
         csl = reader.export_citation("ATTN001", fmt="csl-json")
         assert csl is not None
         data = json.loads(csl)

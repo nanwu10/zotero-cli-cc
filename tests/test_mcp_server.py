@@ -1,4 +1,5 @@
 """Tests for the MCP server read-only tools."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -125,7 +126,6 @@ class TestHandleSearch:
         assert len(result["items"]) == 1
         assert result["items"][0]["key"] == "ABC123"
 
-
     @patch("zotero_cli_cc.mcp_server._get_reader")
     def test_empty_results(self, mock_get_reader):
         from zotero_cli_cc.mcp_server import _handle_search
@@ -138,7 +138,6 @@ class TestHandleSearch:
         assert result["total"] == 0
         assert result["items"] == []
 
-
     @patch("zotero_cli_cc.mcp_server._get_reader")
     def test_with_collection_filter(self, mock_get_reader):
         from zotero_cli_cc.mcp_server import _handle_search
@@ -149,7 +148,6 @@ class TestHandleSearch:
 
         _handle_search("q", "MyCol", 10)
         reader.search.assert_called_once_with("q", collection="MyCol", limit=10)
-
 
 
 class TestHandleListItems:
@@ -168,7 +166,6 @@ class TestHandleListItems:
         reader.search.assert_called_once_with("", collection=None, limit=50)
 
 
-
 class TestHandleRead:
     @patch("zotero_cli_cc.mcp_server._get_reader")
     def test_found(self, mock_get_reader):
@@ -184,7 +181,6 @@ class TestHandleRead:
         assert result["item"]["key"] == "ABC123"
         assert len(result["notes"]) == 1
 
-
     @patch("zotero_cli_cc.mcp_server._get_reader")
     def test_not_found_raises(self, mock_get_reader):
         from zotero_cli_cc.mcp_server import _handle_read
@@ -195,7 +191,6 @@ class TestHandleRead:
 
         with pytest.raises(ValueError, match="not found"):
             _handle_read("MISSING")
-
 
 
 class TestHandlePdf:
@@ -237,7 +232,6 @@ class TestHandlePdf:
             _handle_pdf("ABC123", None)
 
 
-
 class TestHandleSummarize:
     @patch("zotero_cli_cc.mcp_server._get_reader")
     def test_returns_summary(self, mock_get_reader):
@@ -257,7 +251,6 @@ class TestHandleSummarize:
         assert result["abstract"] == "An abstract."
         assert len(result["notes"]) == 1
 
-
     @patch("zotero_cli_cc.mcp_server._get_reader")
     def test_not_found_raises(self, mock_get_reader):
         from zotero_cli_cc.mcp_server import _handle_summarize
@@ -268,7 +261,6 @@ class TestHandleSummarize:
 
         with pytest.raises(ValueError, match="not found"):
             _handle_summarize("MISSING")
-
 
 
 class TestHandleSummarizeAll:
@@ -288,7 +280,6 @@ class TestHandleSummarizeAll:
         assert result["items"][0]["abstract"] == "An abstract."
 
 
-
 class TestHandleExport:
     @patch("zotero_cli_cc.mcp_server._get_reader")
     def test_returns_citation(self, mock_get_reader):
@@ -302,7 +293,6 @@ class TestHandleExport:
         assert result["citation"] == "@article{abc, title={Test}}"
         assert result["format"] == "bibtex"
 
-
     @patch("zotero_cli_cc.mcp_server._get_reader")
     def test_not_found_raises(self, mock_get_reader):
         from zotero_cli_cc.mcp_server import _handle_export
@@ -313,7 +303,6 @@ class TestHandleExport:
 
         with pytest.raises(ValueError, match="not found"):
             _handle_export("MISSING", "bibtex")
-
 
 
 class TestHandleRelate:
@@ -331,7 +320,6 @@ class TestHandleRelate:
         assert result["items"][0]["key"] == "REL1"
         assert result["source_key"] == "ABC123"
 
-
     @patch("zotero_cli_cc.mcp_server._get_reader")
     def test_empty_related(self, mock_get_reader):
         from zotero_cli_cc.mcp_server import _handle_relate
@@ -342,7 +330,6 @@ class TestHandleRelate:
 
         result = _handle_relate("ABC123", 20)
         assert result["items"] == []
-
 
 
 class TestHandleNoteView:
@@ -359,7 +346,6 @@ class TestHandleNoteView:
         assert result["notes"][0]["content"] == "Some note content."
         assert result["parent_key"] == "ABC123"
 
-
     @patch("zotero_cli_cc.mcp_server._get_reader")
     def test_empty_notes(self, mock_get_reader):
         from zotero_cli_cc.mcp_server import _handle_note_view
@@ -370,7 +356,6 @@ class TestHandleNoteView:
 
         result = _handle_note_view("ABC123")
         assert result["notes"] == []
-
 
 
 class TestHandleTagView:
@@ -387,7 +372,6 @@ class TestHandleTagView:
         assert result["tags"] == ["ML", "AI"]
         assert result["key"] == "ABC123"
 
-
     @patch("zotero_cli_cc.mcp_server._get_reader")
     def test_not_found_raises(self, mock_get_reader):
         from zotero_cli_cc.mcp_server import _handle_tag_view
@@ -398,7 +382,6 @@ class TestHandleTagView:
 
         with pytest.raises(ValueError, match="not found"):
             _handle_tag_view("MISSING")
-
 
 
 class TestHandleCollectionList:
@@ -415,7 +398,6 @@ class TestHandleCollectionList:
         assert result["collections"][0]["name"] == "My Collection"
 
 
-
 class TestHandleCollectionItems:
     @patch("zotero_cli_cc.mcp_server._get_reader")
     def test_returns_items(self, mock_get_reader):
@@ -429,7 +411,6 @@ class TestHandleCollectionItems:
         assert len(result["items"]) == 1
         assert result["collection_key"] == "COL1"
 
-
     @patch("zotero_cli_cc.mcp_server._get_reader")
     def test_empty_collection(self, mock_get_reader):
         from zotero_cli_cc.mcp_server import _handle_collection_items
@@ -440,7 +421,6 @@ class TestHandleCollectionItems:
 
         result = _handle_collection_items("EMPTY")
         assert result["items"] == []
-
 
 
 # ---------------------------------------------------------------------------
@@ -492,7 +472,7 @@ class TestGetWriter:
 
         with patch("zotero_cli_cc.mcp_server.ZoteroWriter") as mock_writer_cls:
             mock_writer_cls.return_value = MagicMock()
-            writer = _get_writer()
+            _get_writer()
             mock_writer_cls.assert_called_once_with("12345", "secret")
 
     @patch("zotero_cli_cc.mcp_server.load_config")

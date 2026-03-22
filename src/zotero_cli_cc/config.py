@@ -87,7 +87,7 @@ def get_default_profile(path: Path | None = None) -> str:
         return ""
     with open(path, "rb") as f:
         data = tomllib.load(f)
-    return data.get("default", {}).get("profile", "")
+    return str(data.get("default", {}).get("profile", ""))
 
 
 def save_config(config: AppConfig, path: Path | None = None) -> None:

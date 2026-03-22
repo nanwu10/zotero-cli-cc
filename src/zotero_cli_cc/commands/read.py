@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import click
 
-from zotero_cli_cc.config import load_config, get_data_dir
+from zotero_cli_cc.config import get_data_dir, load_config
 from zotero_cli_cc.core.reader import ZoteroReader
-from zotero_cli_cc.formatter import format_item_detail, format_error
+from zotero_cli_cc.formatter import format_error, format_item_detail
 from zotero_cli_cc.models import ErrorInfo
 
 
@@ -21,7 +21,16 @@ def read_cmd(ctx: click.Context, key: str) -> None:
     try:
         item = reader.get_item(key)
         if item is None:
-            click.echo(format_error(ErrorInfo(message=f"Item '{key}' not found", context="read", hint="Run 'zot search' to find valid item keys"), output_json=json_out))
+            click.echo(
+                format_error(
+                    ErrorInfo(
+                        message=f"Item '{key}' not found",
+                        context="read",
+                        hint="Run 'zot search' to find valid item keys",
+                    ),
+                    output_json=json_out,
+                )
+            )
             return
         notes = reader.get_notes(key)
         detail = ctx.obj.get("detail", "standard")

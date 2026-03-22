@@ -8,17 +8,14 @@ from rich.console import Console
 from rich.table import Table
 from rich.tree import Tree
 
-from zotero_cli_cc.models import Collection, Item, Note, ErrorInfo
+from zotero_cli_cc.models import Collection, ErrorInfo, Item, Note
 
 
 def format_items(items: list[Item], output_json: bool = False, detail: str = "standard") -> str:
     if output_json:
         if detail == "minimal":
             minimal_keys = {"key", "item_type", "title", "creators", "date"}
-            data = [
-                {k: v for k, v in asdict(i).items() if k in minimal_keys}
-                for i in items
-            ]
+            data = [{k: v for k, v in asdict(i).items() if k in minimal_keys} for i in items]
         else:
             data = [asdict(i) for i in items]
         return json.dumps(data, indent=2, ensure_ascii=False)
@@ -39,9 +36,7 @@ def format_items(items: list[Item], output_json: bool = False, detail: str = "st
     return buf.getvalue()
 
 
-def format_item_detail(
-    item: Item, notes: list[Note], output_json: bool = False, detail: str = "standard"
-) -> str:
+def format_item_detail(item: Item, notes: list[Note], output_json: bool = False, detail: str = "standard") -> str:
     if output_json:
         if detail == "minimal":
             minimal_keys = {"key", "item_type", "title", "creators", "date", "doi", "url"}
@@ -74,13 +69,12 @@ def format_item_detail(
     return buf.getvalue()
 
 
-def format_collections(
-    collections: list[Collection], output_json: bool = False
-) -> str:
+def format_collections(collections: list[Collection], output_json: bool = False) -> str:
     if output_json:
         return json.dumps(
             [_collection_to_dict(c) for c in collections],
-            indent=2, ensure_ascii=False,
+            indent=2,
+            ensure_ascii=False,
         )
     buf = StringIO()
     console = Console(file=buf, force_terminal=False, width=120)

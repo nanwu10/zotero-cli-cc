@@ -1,16 +1,24 @@
 import json
 
-from zotero_cli_cc.formatter import format_items, format_item_detail, format_collections, format_notes, format_error
-from zotero_cli_cc.models import Item, Creator, Collection, Note
+from zotero_cli_cc.formatter import format_collections, format_error, format_item_detail, format_items, format_notes
+from zotero_cli_cc.models import Collection, Creator, Item, Note
 
 
 def _make_item(key="K1", title="Test") -> Item:
     return Item(
-        key=key, item_type="journalArticle", title=title,
+        key=key,
+        item_type="journalArticle",
+        title=title,
         creators=[Creator("John", "Doe", "author")],
-        abstract="Abstract.", date="2025", url=None, doi="10.1/x",
-        tags=["ML"], collections=[], date_added="2025-01-01",
-        date_modified="2025-01-02", extra={},
+        abstract="Abstract.",
+        date="2025",
+        url=None,
+        doi="10.1/x",
+        tags=["ML"],
+        collections=[],
+        date_added="2025-01-01",
+        date_modified="2025-01-02",
+        extra={},
     )
 
 
@@ -59,6 +67,7 @@ def test_format_notes_json():
 
 def test_format_error_json_with_hint():
     from zotero_cli_cc.models import ErrorInfo
+
     err = ErrorInfo(message="Item 'XYZ' not found", context="read", hint="Run 'zot search' to find valid keys")
     result = format_error(err, output_json=True)
     data = json.loads(result)
@@ -69,6 +78,7 @@ def test_format_error_json_with_hint():
 
 def test_format_error_text_with_hint():
     from zotero_cli_cc.models import ErrorInfo
+
     err = ErrorInfo(message="Item 'XYZ' not found", hint="Run 'zot search' to find valid keys")
     result = format_error(err, output_json=False)
     assert "Error: Item 'XYZ' not found" in result

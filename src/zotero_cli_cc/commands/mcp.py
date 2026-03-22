@@ -1,4 +1,5 @@
 """MCP server CLI commands."""
+
 from __future__ import annotations
 
 import click
@@ -17,8 +18,7 @@ def serve_cmd() -> None:
         from zotero_cli_cc.mcp_server import mcp as mcp_server
     except ImportError:
         click.echo(
-            "Error: MCP support not installed.\n"
-            "Install with: pip install zotero-cli-cc[mcp]",
+            "Error: MCP support not installed.\nInstall with: pip install zotero-cli-cc[mcp]",
             err=True,
         )
         raise SystemExit(1)

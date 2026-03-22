@@ -4,7 +4,7 @@ import json
 
 import click
 
-from zotero_cli_cc.config import load_config, get_data_dir
+from zotero_cli_cc.config import get_data_dir, load_config
 from zotero_cli_cc.core.reader import ZoteroReader
 
 

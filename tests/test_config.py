@@ -1,7 +1,14 @@
 import sys
 from pathlib import Path
 
-from zotero_cli_cc.config import AppConfig, load_config, save_config, detect_zotero_data_dir
+from zotero_cli_cc.config import (
+    AppConfig,
+    detect_zotero_data_dir,
+    get_default_profile,
+    list_profiles,
+    load_config,
+    save_config,
+)
 
 
 def test_default_config():
@@ -53,6 +60,7 @@ def test_config_has_write_credentials():
 
 def test_get_data_dir_env_override(tmp_path, monkeypatch):
     from zotero_cli_cc.config import get_data_dir
+
     monkeypatch.setenv("ZOT_DATA_DIR", str(tmp_path))
     cfg = AppConfig(data_dir="/some/other/path")
     result = get_data_dir(cfg)
@@ -61,6 +69,7 @@ def test_get_data_dir_env_override(tmp_path, monkeypatch):
 
 def test_get_data_dir_falls_back_to_config(monkeypatch, tmp_path):
     from zotero_cli_cc.config import get_data_dir
+
     monkeypatch.delenv("ZOT_DATA_DIR", raising=False)
     cfg = AppConfig(data_dir=str(tmp_path))
     result = get_data_dir(cfg)
@@ -68,8 +77,6 @@ def test_get_data_dir_falls_back_to_config(monkeypatch, tmp_path):
 
 
 # --- Multi-profile tests ---
-
-from zotero_cli_cc.config import list_profiles, get_default_profile
 
 
 def test_load_config_with_profile(tmp_path):

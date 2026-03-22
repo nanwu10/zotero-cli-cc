@@ -35,6 +35,7 @@ class ZoteroReader:
         self._tmp_dir: Path | None = None
         self._excluded_sql: str | None = None
         self._excluded_ids: tuple[int, ...] | None = None
+        self._tmp_dir_obj: tempfile.TemporaryDirectory[str] | None = None
 
     def _connect(self) -> sqlite3.Connection:
         if self._conn is not None:
@@ -42,7 +43,8 @@ class ZoteroReader:
         for attempt in range(MAX_RETRIES):
             try:
                 conn = sqlite3.connect(
-                    f"file:{self._db_path}?mode=ro", uri=True,
+                    f"file:{self._db_path}?mode=ro",
+                    uri=True,
                     timeout=5.0,
                 )
                 conn.row_factory = sqlite3.Row
@@ -124,9 +126,7 @@ class ZoteroReader:
 
     def get_schema_version(self) -> int | None:
         conn = self._connect()
-        row = conn.execute(
-            "SELECT version FROM version WHERE schema = 'userdata'"
-        ).fetchone()
+        row = conn.execute("SELECT version FROM version WHERE schema = 'userdata'").fetchone()
         return row["version"] if row else None
 
     def check_schema_compatibility(self) -> None:
@@ -169,8 +169,7 @@ class ZoteroReader:
             collections=collections,
             date_added=row["dateAdded"],
             date_modified=row["dateModified"],
-            extra={k: v for k, v in fields.items()
-                   if k not in ("title", "abstractNote", "date", "url", "DOI")},
+            extra={k: v for k, v in fields.items() if k not in ("title", "abstractNote", "date", "url", "DOI")},
         )
 
     def search(
@@ -236,8 +235,7 @@ class ZoteroReader:
         # Filter by collection (accepts key or name)
         if collection:
             col_row = conn.execute(
-                "SELECT collectionID FROM collections "
-                "WHERE key = ? OR collectionName = ?",
+                "SELECT collectionID FROM collections WHERE key = ? OR collectionName = ?",
                 (collection, collection),
             ).fetchone()
             if col_row:
@@ -252,22 +250,18 @@ class ZoteroReader:
 
         # Resolve items in batch
         total = len(item_ids)
-        target_ids = sorted(item_ids)[offset:offset + limit]
+        target_ids = sorted(item_ids)[offset : offset + limit]
         items = self._get_items_batch(conn, target_ids) if target_ids else []
 
         return SearchResult(items=items, total=total, query=query)
 
     def get_notes(self, key: str) -> list[Note]:
         conn = self._connect()
-        parent = conn.execute(
-            "SELECT itemID FROM items WHERE key = ?", (key,)
-        ).fetchone()
+        parent = conn.execute("SELECT itemID FROM items WHERE key = ?", (key,)).fetchone()
         if parent is None:
             return []
         rows = conn.execute(
-            "SELECT i.key, n.note FROM itemNotes n "
-            "JOIN items i ON n.itemID = i.itemID "
-            "WHERE n.parentItemID = ?",
+            "SELECT i.key, n.note FROM itemNotes n JOIN items i ON n.itemID = i.itemID WHERE n.parentItemID = ?",
             (parent["itemID"],),
         ).fetchall()
         notes = []
@@ -275,19 +269,14 @@ class ZoteroReader:
             content = self._html_to_markdown(r["note"] or "")
             tags = self._get_item_tags(
                 conn,
-                conn.execute(
-                    "SELECT itemID FROM items WHERE key = ?", (r["key"],)
-                ).fetchone()["itemID"],
+                conn.execute("SELECT itemID FROM items WHERE key = ?", (r["key"],)).fetchone()["itemID"],
             )
             notes.append(Note(key=r["key"], parent_key=key, content=content, tags=tags))
         return notes
 
     def get_collections(self) -> list[Collection]:
         conn = self._connect()
-        rows = conn.execute(
-            "SELECT collectionID, collectionName, parentCollectionID, key "
-            "FROM collections"
-        ).fetchall()
+        rows = conn.execute("SELECT collectionID, collectionName, parentCollectionID, key FROM collections").fetchall()
         coll_map: dict[int, Collection] = {}
         parent_map: dict[int, int | None] = {}
         for r in rows:
@@ -329,9 +318,7 @@ class ZoteroReader:
 
     def get_attachments(self, key: str) -> list[Attachment]:
         conn = self._connect()
-        parent = conn.execute(
-            "SELECT itemID FROM items WHERE key = ?", (key,)
-        ).fetchone()
+        parent = conn.execute("SELECT itemID FROM items WHERE key = ?", (key,)).fetchone()
         if parent is None:
             return []
         rows = conn.execute(
@@ -345,13 +332,15 @@ class ZoteroReader:
         for r in rows:
             raw_path = r["path"] or ""
             filename = raw_path.replace("storage:", "") if raw_path.startswith("storage:") else raw_path
-            attachments.append(Attachment(
-                key=r["key"],
-                parent_key=key,
-                filename=filename,
-                content_type=r["contentType"] or "",
-                path=None,
-            ))
+            attachments.append(
+                Attachment(
+                    key=r["key"],
+                    parent_key=key,
+                    filename=filename,
+                    content_type=r["contentType"] or "",
+                    path=None,
+                )
+            )
         return attachments
 
     def get_pdf_attachment(self, key: str) -> Attachment | None:
@@ -400,9 +389,7 @@ class ZoteroReader:
         ).fetchone()["cnt"]
 
         # Notes count
-        notes_count = conn.execute(
-            "SELECT COUNT(*) as cnt FROM itemNotes"
-        ).fetchone()["cnt"]
+        notes_count = conn.execute("SELECT COUNT(*) as cnt FROM itemNotes").fetchone()["cnt"]
 
         return {
             "total_items": total,
@@ -425,9 +412,7 @@ class ZoteroReader:
 
     def get_related_items(self, key: str, limit: int = 20) -> list[Item]:
         conn = self._connect()
-        parent = conn.execute(
-            "SELECT itemID FROM items WHERE key = ?", (key,)
-        ).fetchone()
+        parent = conn.execute("SELECT itemID FROM items WHERE key = ?", (key,)).fetchone()
         if parent is None:
             return []
         item_id = parent["itemID"]
@@ -441,16 +426,15 @@ class ZoteroReader:
         for r in rows:
             obj = r["object"]
             rel_key = obj.rsplit("/", 1)[-1] if "/" in obj else obj
-            rel_row = conn.execute(
-                "SELECT itemID FROM items WHERE key = ?", (rel_key,)
-            ).fetchone()
+            rel_row = conn.execute("SELECT itemID FROM items WHERE key = ?", (rel_key,)).fetchone()
             if rel_row:
                 related_ids[rel_row["itemID"]] = related_ids.get(rel_row["itemID"], 0) + 100
 
         # Implicit: shared collections
-        my_cols = {r["collectionID"] for r in conn.execute(
-            "SELECT collectionID FROM collectionItems WHERE itemID = ?", (item_id,)
-        ).fetchall()}
+        my_cols = {
+            r["collectionID"]
+            for r in conn.execute("SELECT collectionID FROM collectionItems WHERE itemID = ?", (item_id,)).fetchall()
+        }
         if my_cols:
             placeholders = ",".join("?" * len(my_cols))
             rows = conn.execute(
@@ -463,9 +447,9 @@ class ZoteroReader:
                 related_ids[r["itemID"]] = related_ids.get(r["itemID"], 0) + r["cnt"]
 
         # Implicit: shared tags (2+ overlap)
-        my_tags = {r["tagID"] for r in conn.execute(
-            "SELECT tagID FROM itemTags WHERE itemID = ?", (item_id,)
-        ).fetchall()}
+        my_tags = {
+            r["tagID"] for r in conn.execute("SELECT tagID FROM itemTags WHERE itemID = ?", (item_id,)).fetchall()
+        }
         if my_tags:
             placeholders = ",".join("?" * len(my_tags))
             rows = conn.execute(
@@ -574,22 +558,23 @@ class ZoteroReader:
                 continue
             row = id_to_row[item_id]
             fields = fields_map.get(item_id, {})
-            items.append(Item(
-                key=row["key"],
-                item_type=type_map.get(row["itemTypeID"], "unknown"),
-                title=fields.get("title", ""),
-                creators=creators_map.get(item_id, []),
-                abstract=fields.get("abstractNote"),
-                date=fields.get("date"),
-                url=fields.get("url"),
-                doi=fields.get("DOI"),
-                tags=tags_map.get(item_id, []),
-                collections=colls_map.get(item_id, []),
-                date_added=row["dateAdded"],
-                date_modified=row["dateModified"],
-                extra={k: v for k, v in fields.items()
-                       if k not in ("title", "abstractNote", "date", "url", "DOI")},
-            ))
+            items.append(
+                Item(
+                    key=row["key"],
+                    item_type=type_map.get(row["itemTypeID"], "unknown"),
+                    title=fields.get("title", ""),
+                    creators=creators_map.get(item_id, []),
+                    abstract=fields.get("abstractNote"),
+                    date=fields.get("date"),
+                    url=fields.get("url"),
+                    doi=fields.get("DOI"),
+                    tags=tags_map.get(item_id, []),
+                    collections=colls_map.get(item_id, []),
+                    date_added=row["dateAdded"],
+                    date_modified=row["dateModified"],
+                    extra={k: v for k, v in fields.items() if k not in ("title", "abstractNote", "date", "url", "DOI")},
+                )
+            )
         return items
 
     def _get_item_fields(self, conn: sqlite3.Connection, item_id: int) -> dict[str, str]:
@@ -615,9 +600,7 @@ class ZoteroReader:
 
     def _get_item_tags(self, conn: sqlite3.Connection, item_id: int) -> list[str]:
         rows = conn.execute(
-            "SELECT t.name FROM itemTags it "
-            "JOIN tags t ON it.tagID = t.tagID "
-            "WHERE it.itemID = ?",
+            "SELECT t.name FROM itemTags it JOIN tags t ON it.tagID = t.tagID WHERE it.itemID = ?",
             (item_id,),
         ).fetchall()
         return [r["name"] for r in rows]
@@ -681,8 +664,7 @@ class ZoteroReader:
         }
         if item.creators:
             csl["author"] = [
-                {"family": c.last_name, "given": c.first_name}
-                for c in item.creators if c.creator_type == "author"
+                {"family": c.last_name, "given": c.first_name} for c in item.creators if c.creator_type == "author"
             ]
         if item.date:
             csl["issued"] = {"raw": item.date}
@@ -697,4 +679,5 @@ class ZoteroReader:
     @staticmethod
     def _html_to_markdown(html: str) -> str:
         from markdownify import markdownify as md
+
         return md(html, strip=["img"]).strip()

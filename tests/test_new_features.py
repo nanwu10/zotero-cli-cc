@@ -1,4 +1,5 @@
 """Tests for new features: --dry-run, --offset, PdfExtractionError, timeout, ZoteroWriteError in commands."""
+
 from __future__ import annotations
 
 import json
@@ -9,8 +10,8 @@ import pytest
 from click.testing import CliRunner
 
 from zotero_cli_cc.cli import main
-from zotero_cli_cc.core.pdf_extractor import extract_text_from_pdf, PdfExtractionError
-from zotero_cli_cc.core.writer import ZoteroWriter, ZoteroWriteError, SYNC_REMINDER
+from zotero_cli_cc.core.pdf_extractor import PdfExtractionError, extract_text_from_pdf
+from zotero_cli_cc.core.writer import SYNC_REMINDER, ZoteroWriteError, ZoteroWriter
 
 WRITE_ENV = {"ZOT_LIBRARY_ID": "123", "ZOT_API_KEY": "abc"}
 
@@ -34,15 +35,18 @@ class TestDryRun:
         assert "[dry-run]" in result.output
 
     def test_collection_reorganize_dry_run(self, tmp_path):
-        plan = {"collections": [
-            {"name": "Topic A", "items": ["K1", "K2"]},
-            {"name": "Sub B", "parent": "Topic A", "items": ["K3"]},
-        ]}
+        plan = {
+            "collections": [
+                {"name": "Topic A", "items": ["K1", "K2"]},
+                {"name": "Sub B", "parent": "Topic A", "items": ["K3"]},
+            ]
+        }
         plan_file = tmp_path / "plan.json"
         plan_file.write_text(json.dumps(plan))
         runner = CliRunner()
         result = runner.invoke(
-            main, ["collection", "reorganize", str(plan_file), "--dry-run"],
+            main,
+            ["collection", "reorganize", str(plan_file), "--dry-run"],
         )
         assert result.exit_code == 0
         assert "[dry-run] Would create collection 'Topic A'" in result.output
@@ -54,7 +58,9 @@ class TestDryRun:
     def test_collection_delete_dry_run(self):
         runner = CliRunner()
         result = runner.invoke(
-            main, ["collection", "delete", "COL1", "--dry-run"], env=WRITE_ENV,
+            main,
+            ["collection", "delete", "COL1", "--dry-run"],
+            env=WRITE_ENV,
         )
         assert result.exit_code == 0
         assert "[dry-run]" in result.output
@@ -63,7 +69,9 @@ class TestDryRun:
     def test_tag_add_dry_run(self):
         runner = CliRunner()
         result = runner.invoke(
-            main, ["tag", "K1", "--add", "newtag", "--dry-run"], env=WRITE_ENV,
+            main,
+            ["tag", "K1", "--add", "newtag", "--dry-run"],
+            env=WRITE_ENV,
         )
         assert result.exit_code == 0
         assert "[dry-run]" in result.output
@@ -72,7 +80,9 @@ class TestDryRun:
     def test_tag_remove_dry_run(self):
         runner = CliRunner()
         result = runner.invoke(
-            main, ["tag", "K1", "--remove", "oldtag", "--dry-run"], env=WRITE_ENV,
+            main,
+            ["tag", "K1", "--remove", "oldtag", "--dry-run"],
+            env=WRITE_ENV,
         )
         assert result.exit_code == 0
         assert "[dry-run]" in result.output
@@ -129,7 +139,8 @@ class TestOffset:
     def test_summarize_all_with_offset(self, test_db_path):
         runner = CliRunner()
         result = runner.invoke(
-            main, ["summarize-all", "--offset", "1"],
+            main,
+            ["summarize-all", "--offset", "1"],
             env={"ZOT_DATA_DIR": str(test_db_path.parent)},
         )
         assert result.exit_code == 0
@@ -176,7 +187,9 @@ class TestBatchDelete:
 
         runner = CliRunner()
         result = runner.invoke(
-            main, ["delete", "K1", "K2", "K3", "--yes"], env=WRITE_ENV,
+            main,
+            ["delete", "K1", "K2", "K3", "--yes"],
+            env=WRITE_ENV,
         )
         assert result.exit_code == 0
         assert mock_writer.delete_item.call_count == 3
@@ -200,7 +213,9 @@ class TestBatchDelete:
 
         runner = CliRunner()
         result = runner.invoke(
-            main, ["delete", "K1", "K2", "K3", "--yes"], env=WRITE_ENV,
+            main,
+            ["delete", "K1", "K2", "K3", "--yes"],
+            env=WRITE_ENV,
         )
         assert result.exit_code == 0
         assert "K1" in result.output
@@ -218,7 +233,9 @@ class TestBatchTag:
 
         runner = CliRunner()
         result = runner.invoke(
-            main, ["tag", "K1", "K2", "K3", "--add", "newtag"], env=WRITE_ENV,
+            main,
+            ["tag", "K1", "K2", "K3", "--add", "newtag"],
+            env=WRITE_ENV,
         )
         assert result.exit_code == 0
         assert mock_writer.add_tags.call_count == 3
@@ -233,7 +250,9 @@ class TestBatchTag:
 
         runner = CliRunner()
         result = runner.invoke(
-            main, ["tag", "K1", "K2", "--remove", "oldtag"], env=WRITE_ENV,
+            main,
+            ["tag", "K1", "K2", "--remove", "oldtag"],
+            env=WRITE_ENV,
         )
         assert result.exit_code == 0
         assert mock_writer.remove_tags.call_count == 2
@@ -241,7 +260,8 @@ class TestBatchTag:
     def test_tag_multiple_dry_run(self):
         runner = CliRunner()
         result = runner.invoke(
-            main, ["tag", "K1", "K2", "--add", "t", "--dry-run"],
+            main,
+            ["tag", "K1", "K2", "--add", "t", "--dry-run"],
         )
         assert result.exit_code == 0
         assert result.output.count("[dry-run]") == 2
@@ -249,7 +269,8 @@ class TestBatchTag:
     def test_tag_view_multiple_keys(self, test_db_path):
         runner = CliRunner()
         result = runner.invoke(
-            main, ["tag", "ATTN001", "BERT002"],
+            main,
+            ["tag", "ATTN001", "BERT002"],
             env={"ZOT_DATA_DIR": str(test_db_path.parent)},
         )
         assert result.exit_code == 0
@@ -267,7 +288,7 @@ class TestTimeout:
         mock_zotero_cls.return_value = mock_zot
         mock_zot.client = MagicMock()
 
-        writer = ZoteroWriter(library_id="123", api_key="abc", timeout=10.0)
+        ZoteroWriter(library_id="123", api_key="abc", timeout=10.0)
         # Verify timeout was set on the client
         mock_zot.client.timeout = mock_zot.client.timeout  # just verify no error
 

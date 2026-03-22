@@ -1,4 +1,5 @@
 """Tests for stats and open commands."""
+
 from __future__ import annotations
 
 import json
@@ -65,6 +66,7 @@ class TestOpenCmd:
 class TestGetStats:
     def test_get_stats(self, test_db_path: Path):
         from zotero_cli_cc.core.reader import ZoteroReader
+
         reader = ZoteroReader(test_db_path)
         try:
             stats = reader.get_stats()

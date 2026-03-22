@@ -4,9 +4,9 @@ import json
 
 import click
 
-from zotero_cli_cc.config import load_config, get_data_dir
+from zotero_cli_cc.config import get_data_dir, load_config
+from zotero_cli_cc.core.pdf_extractor import PdfExtractionError, extract_text_from_pdf
 from zotero_cli_cc.core.reader import ZoteroReader
-from zotero_cli_cc.core.pdf_extractor import extract_text_from_pdf, PdfExtractionError
 from zotero_cli_cc.formatter import format_error
 from zotero_cli_cc.models import ErrorInfo
 
@@ -29,7 +29,16 @@ def pdf_cmd(ctx: click.Context, key: str, pages: str | None) -> None:
                 raise ValueError(f"invalid range: start={start}, end={end}")
             page_range = (start, end)
         except ValueError:
-            click.echo(format_error(ErrorInfo(message=f"Invalid page range '{pages}'", context="pdf", hint="Use format: '1-5' or '3' for a single page"), output_json=json_out))
+            click.echo(
+                format_error(
+                    ErrorInfo(
+                        message=f"Invalid page range '{pages}'",
+                        context="pdf",
+                        hint="Use format: '1-5' or '3' for a single page",
+                    ),
+                    output_json=json_out,
+                )
+            )
             return
     data_dir = get_data_dir(cfg)
     db_path = data_dir / "zotero.sqlite"
@@ -37,13 +46,32 @@ def pdf_cmd(ctx: click.Context, key: str, pages: str | None) -> None:
     try:
         att = reader.get_pdf_attachment(key)
         if att is None:
-            click.echo(format_error(ErrorInfo(message=f"No PDF attachment found for '{key}'", context="pdf", hint="Check item details with: zot read KEY"), output_json=json_out))
+            click.echo(
+                format_error(
+                    ErrorInfo(
+                        message=f"No PDF attachment found for '{key}'",
+                        context="pdf",
+                        hint="Check item details with: zot read KEY",
+                    ),
+                    output_json=json_out,
+                )
+            )
             return
         pdf_path = data_dir / "storage" / att.key / att.filename
         if not pdf_path.exists():
-            click.echo(format_error(ErrorInfo(message=f"PDF file not found at {pdf_path}", context="pdf", hint="The file may have been moved. Check Zotero storage directory"), output_json=json_out))
+            click.echo(
+                format_error(
+                    ErrorInfo(
+                        message=f"PDF file not found at {pdf_path}",
+                        context="pdf",
+                        hint="The file may have been moved. Check Zotero storage directory",
+                    ),
+                    output_json=json_out,
+                )
+            )
             return
         from zotero_cli_cc.core.pdf_cache import PdfCache
+
         cache = PdfCache()
         try:
             if page_range is None:
@@ -57,7 +85,12 @@ def pdf_cmd(ctx: click.Context, key: str, pages: str | None) -> None:
                 text = extract_text_from_pdf(pdf_path, pages=page_range)
         except PdfExtractionError as e:
             cache.close()
-            click.echo(format_error(ErrorInfo(message=str(e), context="pdf", hint="The PDF may be corrupted or password-protected"), output_json=json_out))
+            click.echo(
+                format_error(
+                    ErrorInfo(message=str(e), context="pdf", hint="The PDF may be corrupted or password-protected"),
+                    output_json=json_out,
+                )
+            )
             return
         cache.close()
         if json_out:

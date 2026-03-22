@@ -1,12 +1,11 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import click
 
-import re
-
-from zotero_cli_cc.config import AppConfig, load_config, save_config, CONFIG_FILE, list_profiles, get_default_profile
+from zotero_cli_cc.config import CONFIG_FILE, AppConfig, get_default_profile, list_profiles, load_config, save_config
 
 
 @click.group("config")
@@ -27,16 +26,19 @@ def config_init(ctx: click.Context, config_path: str | None, library_id: str | N
     json_out = ctx.obj.get("json", False) if ctx.obj else False
     if no_interaction:
         if not library_id or not api_key:
-            from zotero_cli_cc.models import ErrorInfo
             from zotero_cli_cc.formatter import format_error
-            click.echo(format_error(
-                ErrorInfo(
-                    message="--library-id and --api-key required with --no-interaction",
-                    context="config init",
-                    hint="Provide --library-id and --api-key, or run without --no-interaction",
-                ),
-                output_json=json_out,
-            ))
+            from zotero_cli_cc.models import ErrorInfo
+
+            click.echo(
+                format_error(
+                    ErrorInfo(
+                        message="--library-id and --api-key required with --no-interaction",
+                        context="config init",
+                        hint="Provide --library-id and --api-key, or run without --no-interaction",
+                    ),
+                    output_json=json_out,
+                )
+            )
             ctx.exit(1)
             return
     else:
@@ -92,6 +94,7 @@ def cache_group() -> None:
 def cache_clear() -> None:
     """Clear the PDF text cache."""
     from zotero_cli_cc.core.pdf_cache import PdfCache
+
     cache = PdfCache()
     stats = cache.stats()
     cache.clear()
@@ -103,6 +106,7 @@ def cache_clear() -> None:
 def cache_stats() -> None:
     """Show PDF cache statistics."""
     from zotero_cli_cc.core.pdf_cache import PdfCache
+
     cache = PdfCache()
     stats = cache.stats()
     cache.close()
@@ -118,12 +122,21 @@ def profile_set(name: str, config_path: str | None) -> None:
     path = Path(config_path) if config_path else CONFIG_FILE
     from zotero_cli_cc.formatter import format_error
     from zotero_cli_cc.models import ErrorInfo
+
     profiles = list_profiles(path)
     if name not in profiles:
-        click.echo(format_error(ErrorInfo(message=f"Profile '{name}' not found", context="config", hint=f"Available profiles: {', '.join(profiles)}")))
+        click.echo(
+            format_error(
+                ErrorInfo(
+                    message=f"Profile '{name}' not found",
+                    context="config",
+                    hint=f"Available profiles: {', '.join(profiles)}",
+                )
+            )
+        )
         return
     content = path.read_text()
-    if '[default]' in content:
+    if "[default]" in content:
         content = re.sub(r'(profile\s*=\s*)"[^"]*"', f'\\1"{name}"', content)
     else:
         content = f'[default]\nprofile = "{name}"\n\n' + content

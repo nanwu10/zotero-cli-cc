@@ -1,4 +1,5 @@
 """End-to-end integration tests using the fixture DB."""
+
 import json
 
 from click.testing import CliRunner

@@ -1,4 +1,5 @@
 from click.testing import CliRunner
+
 from zotero_cli_cc.cli import main
 
 
@@ -19,8 +20,7 @@ def test_delete_no_interaction_skips_prompt():
 def test_config_init_no_interaction_requires_options(tmp_path):
     """--no-interaction + config init without args should error."""
     runner = CliRunner()
-    result = runner.invoke(main, ["--no-interaction", "config", "init",
-                                   "--config-path", str(tmp_path / "config.toml")])
+    result = runner.invoke(main, ["--no-interaction", "config", "init", "--config-path", str(tmp_path / "config.toml")])
     assert "required" in result.output.lower() or "error" in result.output.lower()
 
 
@@ -28,10 +28,20 @@ def test_config_init_no_interaction_with_options(tmp_path):
     """--no-interaction + config init with all args should succeed."""
     config_file = tmp_path / "config.toml"
     runner = CliRunner()
-    result = runner.invoke(main, ["--no-interaction", "config", "init",
-                                   "--config-path", str(config_file),
-                                   "--library-id", "123",
-                                   "--api-key", "abc"])
+    result = runner.invoke(
+        main,
+        [
+            "--no-interaction",
+            "config",
+            "init",
+            "--config-path",
+            str(config_file),
+            "--library-id",
+            "123",
+            "--api-key",
+            "abc",
+        ],
+    )
     assert "saved" in result.output.lower()
     assert config_file.exists()
 

@@ -1,16 +1,16 @@
 """MCP server exposing Zotero tools via FastMCP."""
+
 from __future__ import annotations
 
 import atexit
-from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
 from zotero_cli_cc.config import get_data_dir, load_config
 from zotero_cli_cc.core.pdf_cache import PdfCache
-from zotero_cli_cc.core.pdf_extractor import extract_text_from_pdf, PdfExtractionError
+from zotero_cli_cc.core.pdf_extractor import PdfExtractionError, extract_text_from_pdf
 from zotero_cli_cc.core.reader import ZoteroReader
-from zotero_cli_cc.core.writer import ZoteroWriter, ZoteroWriteError
+from zotero_cli_cc.core.writer import ZoteroWriteError, ZoteroWriter
 from zotero_cli_cc.models import Collection, Item, Note
 
 mcp = FastMCP("zotero", instructions="Read and write access to a local Zotero library")
@@ -41,10 +41,7 @@ def _get_writer() -> ZoteroWriter:
     """
     cfg = load_config()
     if not cfg.has_write_credentials:
-        raise ValueError(
-            "Write credentials not configured. "
-            "Set library_id and api_key in your Zotero CLI config."
-        )
+        raise ValueError("Write credentials not configured. Set library_id and api_key in your Zotero CLI config.")
     return ZoteroWriter(cfg.library_id, cfg.api_key)
 
 
@@ -182,14 +179,16 @@ def _handle_summarize_all(limit: int) -> dict:
     result = reader.search("", limit=limit)
     items = []
     for item in result.items:
-        items.append({
-            "key": item.key,
-            "title": item.title,
-            "authors": [c.full_name for c in item.creators],
-            "abstract": item.abstract,
-            "tags": item.tags,
-            "date": item.date,
-        })
+        items.append(
+            {
+                "key": item.key,
+                "title": item.title,
+                "authors": [c.full_name for c in item.creators],
+                "abstract": item.abstract,
+                "tags": item.tags,
+                "date": item.date,
+            }
+        )
     return {"items": items, "total": result.total}
 
 
@@ -391,13 +390,15 @@ def _handle_collection_reorganize(plan: dict) -> dict:
                 except ZoteroWriteError as e:
                     failed.append({"key": item_key, "error": str(e)})
 
-            results.append({
-                "name": name,
-                "collection_key": col_key,
-                "items_moved": len(moved),
-                "items_failed": len(failed),
-                "failures": failed,
-            })
+            results.append(
+                {
+                    "name": name,
+                    "collection_key": col_key,
+                    "items_moved": len(moved),
+                    "items_failed": len(failed),
+                    "failures": failed,
+                }
+            )
         except ZoteroWriteError as e:
             results.append({"name": name, "error": str(e)})
 

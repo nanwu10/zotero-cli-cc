@@ -1,11 +1,12 @@
 """Batch export all item summaries for AI consumption."""
+
 from __future__ import annotations
 
 import json
 
 import click
 
-from zotero_cli_cc.config import load_config, get_data_dir
+from zotero_cli_cc.config import get_data_dir, load_config
 from zotero_cli_cc.core.reader import ZoteroReader
 
 
@@ -23,14 +24,16 @@ def summarize_all_cmd(ctx: click.Context, offset: int) -> None:
         result = reader.search("", limit=limit, offset=offset)
         items = []
         for item in result.items:
-            items.append({
-                "key": item.key,
-                "title": item.title,
-                "authors": [c.full_name for c in item.creators],
-                "abstract": item.abstract,
-                "tags": item.tags,
-                "date": item.date,
-            })
+            items.append(
+                {
+                    "key": item.key,
+                    "title": item.title,
+                    "authors": [c.full_name for c in item.creators],
+                    "abstract": item.abstract,
+                    "tags": item.tags,
+                    "date": item.date,
+                }
+            )
         click.echo(json.dumps(items, indent=2, ensure_ascii=False))
     finally:
         reader.close()

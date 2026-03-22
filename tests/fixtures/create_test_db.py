@@ -1,4 +1,5 @@
 """Generate a minimal Zotero-compatible SQLite test fixture."""
+
 import sqlite3
 from pathlib import Path
 
@@ -86,8 +87,8 @@ def create_test_db() -> None:
     c.execute("INSERT INTO itemDataValues VALUES (2, 'We propose a new architecture...')")
     c.execute("INSERT INTO itemDataValues VALUES (3, '2017')")
     c.execute("INSERT INTO itemDataValues VALUES (4, '10.5555/attention')")
-    c.execute("INSERT INTO itemData VALUES (1, 4, 1)")   # title
-    c.execute("INSERT INTO itemData VALUES (1, 6, 2)")   # abstract
+    c.execute("INSERT INTO itemData VALUES (1, 4, 1)")  # title
+    c.execute("INSERT INTO itemData VALUES (1, 6, 2)")  # abstract
     c.execute("INSERT INTO itemData VALUES (1, 14, 3)")  # date
     c.execute("INSERT INTO itemData VALUES (1, 26, 4)")  # DOI
     c.execute("INSERT INTO creators VALUES (1, 'Ashish', 'Vaswani')")
@@ -136,7 +137,9 @@ def create_test_db() -> None:
 
     # Notes
     c.execute("INSERT INTO items VALUES (4, 26, '2024-01-03', '2024-01-03', '2024-01-03', 1, 'NOTE004')")
-    c.execute("INSERT INTO itemNotes VALUES (4, 1, '<p>This paper introduces the transformer architecture.</p>', 'Transformer note')")
+    c.execute(
+        "INSERT INTO itemNotes VALUES (4, 1, '<p>This paper introduces the transformer architecture.</p>', 'Transformer note')"
+    )
 
     # Attachment (PDF) for item 1
     c.execute("INSERT INTO items VALUES (5, 14, '2024-01-01', '2024-01-01', '2024-01-01', 1, 'ATCH005')")
