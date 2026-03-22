@@ -9,9 +9,10 @@ from zotero_cli_cc.config import get_data_dir, load_config
 from zotero_cli_cc.core.pdf_cache import PdfCache
 from zotero_cli_cc.core.pdf_extractor import extract_text_from_pdf
 from zotero_cli_cc.core.reader import ZoteroReader
+from zotero_cli_cc.core.writer import ZoteroWriter
 from zotero_cli_cc.models import Collection, Item, Note
 
-mcp = FastMCP("zotero", instructions="Read-only access to a local Zotero library")
+mcp = FastMCP("zotero", instructions="Read and write access to a local Zotero library")
 
 
 # ---------------------------------------------------------------------------
@@ -25,6 +26,20 @@ def _get_reader() -> ZoteroReader:
     data_dir = get_data_dir(cfg)
     db_path = data_dir / "zotero.sqlite"
     return ZoteroReader(db_path)
+
+
+def _get_writer() -> ZoteroWriter:
+    """Create a ZoteroWriter from the user's config.
+
+    Raises ValueError if write credentials are not configured.
+    """
+    cfg = load_config()
+    if not cfg.has_write_credentials:
+        raise ValueError(
+            "Write credentials not configured. "
+            "Set library_id and api_key in your Zotero CLI config."
+        )
+    return ZoteroWriter(cfg.library_id, cfg.api_key)
 
 
 def _item_to_dict(item: Item, detail: str = "standard") -> dict:
@@ -247,6 +262,49 @@ def _handle_collection_items(collection_key: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Write handler functions
+# ---------------------------------------------------------------------------
+
+
+def _handle_note_add(key: str, content: str) -> dict:
+    writer = _get_writer()
+    note_key = writer.add_note(key, content)
+    return {"note_key": note_key}
+
+
+def _handle_tag_add(key: str, tags: list[str]) -> dict:
+    writer = _get_writer()
+    writer.add_tags(key, tags)
+    return {"key": key, "tags_added": tags}
+
+
+def _handle_tag_remove(key: str, tags: list[str]) -> dict:
+    writer = _get_writer()
+    writer.remove_tags(key, tags)
+    return {"key": key, "tags_removed": tags}
+
+
+def _handle_add(doi: str | None, url: str | None) -> dict:
+    if not doi and not url:
+        raise ValueError("Either doi or url must be provided.")
+    writer = _get_writer()
+    item_key = writer.add_item(doi=doi, url=url)
+    return {"item_key": item_key}
+
+
+def _handle_delete(key: str) -> dict:
+    writer = _get_writer()
+    writer.delete_item(key)
+    return {"deleted": True, "key": key}
+
+
+def _handle_collection_create(name: str, parent_key: str | None) -> dict:
+    writer = _get_writer()
+    collection_key = writer.create_collection(name, parent_key=parent_key)
+    return {"collection_key": collection_key}
+
+
+# ---------------------------------------------------------------------------
 # MCP tool definitions
 # ---------------------------------------------------------------------------
 
@@ -361,3 +419,73 @@ def collection_items(collection_key: str) -> dict:
         collection_key: The collection key.
     """
     return _handle_collection_items(collection_key)
+
+
+# ---------------------------------------------------------------------------
+# Write tools
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+def note_add(key: str, content: str) -> dict:
+    """Add a note to a Zotero item.
+
+    Args:
+        key: The Zotero item key to attach the note to.
+        content: The note content (HTML or plain text).
+    """
+    return _handle_note_add(key, content)
+
+
+@mcp.tool()
+def tag_add(key: str, tags: list[str]) -> dict:
+    """Add tags to a Zotero item.
+
+    Args:
+        key: The Zotero item key.
+        tags: List of tag strings to add.
+    """
+    return _handle_tag_add(key, tags)
+
+
+@mcp.tool()
+def tag_remove(key: str, tags: list[str]) -> dict:
+    """Remove tags from a Zotero item.
+
+    Args:
+        key: The Zotero item key.
+        tags: List of tag strings to remove.
+    """
+    return _handle_tag_remove(key, tags)
+
+
+@mcp.tool()
+def add(doi: str | None = None, url: str | None = None) -> dict:
+    """Add a new item to the Zotero library by DOI or URL.
+
+    Args:
+        doi: The DOI of the item (e.g. '10.1234/test').
+        url: The URL of the item.
+    """
+    return _handle_add(doi, url)
+
+
+@mcp.tool()
+def delete(key: str) -> dict:
+    """Delete an item from the Zotero library.
+
+    Args:
+        key: The Zotero item key to delete.
+    """
+    return _handle_delete(key)
+
+
+@mcp.tool()
+def collection_create(name: str, parent_key: str | None = None) -> dict:
+    """Create a new collection in the Zotero library.
+
+    Args:
+        name: The name for the new collection.
+        parent_key: Optional parent collection key for creating a subcollection.
+    """
+    return _handle_collection_create(name, parent_key)

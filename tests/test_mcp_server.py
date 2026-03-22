@@ -458,3 +458,150 @@ class TestReaderAlwaysClosed:
         with pytest.raises(RuntimeError):
             _handle_search("q", None, 50)
         reader.close.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Write tool handler tests
+# ---------------------------------------------------------------------------
+
+
+class TestGetWriter:
+    @patch("zotero_cli_cc.mcp_server.load_config")
+    def test_returns_writer_when_credentials(self, mock_config):
+        from zotero_cli_cc.mcp_server import _get_writer
+
+        cfg = MagicMock()
+        cfg.has_write_credentials = True
+        cfg.library_id = "12345"
+        cfg.api_key = "secret"
+        mock_config.return_value = cfg
+
+        with patch("zotero_cli_cc.mcp_server.ZoteroWriter") as mock_writer_cls:
+            mock_writer_cls.return_value = MagicMock()
+            writer = _get_writer()
+            mock_writer_cls.assert_called_once_with("12345", "secret")
+
+    @patch("zotero_cli_cc.mcp_server.load_config")
+    def test_raises_without_credentials(self, mock_config):
+        from zotero_cli_cc.mcp_server import _get_writer
+
+        cfg = MagicMock()
+        cfg.has_write_credentials = False
+        mock_config.return_value = cfg
+
+        with pytest.raises(ValueError, match="credentials"):
+            _get_writer()
+
+
+class TestHandleNoteAdd:
+    @patch("zotero_cli_cc.mcp_server._get_writer")
+    def test_adds_note(self, mock_get_writer):
+        from zotero_cli_cc.mcp_server import _handle_note_add
+
+        writer = MagicMock()
+        writer.add_note.return_value = "NOTE2"
+        mock_get_writer.return_value = writer
+
+        result = _handle_note_add("ABC123", "Some note content")
+        assert result["note_key"] == "NOTE2"
+        writer.add_note.assert_called_once_with("ABC123", "Some note content")
+
+
+class TestHandleTagAdd:
+    @patch("zotero_cli_cc.mcp_server._get_writer")
+    def test_adds_tags(self, mock_get_writer):
+        from zotero_cli_cc.mcp_server import _handle_tag_add
+
+        writer = MagicMock()
+        mock_get_writer.return_value = writer
+
+        result = _handle_tag_add("ABC123", ["ML", "NLP"])
+        assert result["key"] == "ABC123"
+        assert result["tags_added"] == ["ML", "NLP"]
+        writer.add_tags.assert_called_once_with("ABC123", ["ML", "NLP"])
+
+
+class TestHandleTagRemove:
+    @patch("zotero_cli_cc.mcp_server._get_writer")
+    def test_removes_tags(self, mock_get_writer):
+        from zotero_cli_cc.mcp_server import _handle_tag_remove
+
+        writer = MagicMock()
+        mock_get_writer.return_value = writer
+
+        result = _handle_tag_remove("ABC123", ["ML"])
+        assert result["key"] == "ABC123"
+        assert result["tags_removed"] == ["ML"]
+        writer.remove_tags.assert_called_once_with("ABC123", ["ML"])
+
+
+class TestHandleAdd:
+    @patch("zotero_cli_cc.mcp_server._get_writer")
+    def test_add_by_doi(self, mock_get_writer):
+        from zotero_cli_cc.mcp_server import _handle_add
+
+        writer = MagicMock()
+        writer.add_item.return_value = "NEW1"
+        mock_get_writer.return_value = writer
+
+        result = _handle_add("10.1234/test", None)
+        assert result["item_key"] == "NEW1"
+        writer.add_item.assert_called_once_with(doi="10.1234/test", url=None)
+
+    @patch("zotero_cli_cc.mcp_server._get_writer")
+    def test_add_by_url(self, mock_get_writer):
+        from zotero_cli_cc.mcp_server import _handle_add
+
+        writer = MagicMock()
+        writer.add_item.return_value = "NEW2"
+        mock_get_writer.return_value = writer
+
+        result = _handle_add(None, "https://example.com/paper")
+        assert result["item_key"] == "NEW2"
+        writer.add_item.assert_called_once_with(doi=None, url="https://example.com/paper")
+
+    def test_raises_without_doi_or_url(self):
+        from zotero_cli_cc.mcp_server import _handle_add
+
+        with pytest.raises(ValueError, match="Either doi or url"):
+            _handle_add(None, None)
+
+
+class TestHandleDelete:
+    @patch("zotero_cli_cc.mcp_server._get_writer")
+    def test_deletes_item(self, mock_get_writer):
+        from zotero_cli_cc.mcp_server import _handle_delete
+
+        writer = MagicMock()
+        mock_get_writer.return_value = writer
+
+        result = _handle_delete("ABC123")
+        assert result["deleted"] is True
+        assert result["key"] == "ABC123"
+        writer.delete_item.assert_called_once_with("ABC123")
+
+
+class TestHandleCollectionCreate:
+    @patch("zotero_cli_cc.mcp_server._get_writer")
+    def test_creates_collection(self, mock_get_writer):
+        from zotero_cli_cc.mcp_server import _handle_collection_create
+
+        writer = MagicMock()
+        writer.create_collection.return_value = "COL2"
+        mock_get_writer.return_value = writer
+
+        result = _handle_collection_create("New Collection", None)
+        assert result["collection_key"] == "COL2"
+        writer.create_collection.assert_called_once_with("New Collection", parent_key=None)
+
+    @patch("zotero_cli_cc.mcp_server._get_writer")
+    def test_creates_subcollection(self, mock_get_writer):
+        from zotero_cli_cc.mcp_server import _handle_collection_create
+
+        writer = MagicMock()
+        writer.create_collection.return_value = "COL3"
+        mock_get_writer.return_value = writer
+
+        result = _handle_collection_create("Sub Collection", "COL1")
+        assert result["collection_key"] == "COL3"
+        writer.create_collection.assert_called_once_with("Sub Collection", parent_key="COL1")
