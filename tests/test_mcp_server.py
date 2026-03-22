@@ -1,4 +1,4 @@
-"""Tests for the MCP server read-only tools."""
+"""Tests for the MCP server tools."""
 
 from __future__ import annotations
 
@@ -7,7 +7,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from zotero_cli_cc.models import (
+mcp = pytest.importorskip("mcp", reason="mcp not installed")
+
+from zotero_cli_cc.models import (  # noqa: E402
     Attachment,
     Collection,
     Creator,
