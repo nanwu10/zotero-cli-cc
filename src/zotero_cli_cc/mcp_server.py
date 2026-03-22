@@ -184,6 +184,25 @@ def _handle_summarize(key: str) -> dict:
         reader.close()
 
 
+def _handle_summarize_all(limit: int) -> dict:
+    reader = _get_reader()
+    try:
+        result = reader.search("", limit=limit)
+        items = []
+        for item in result.items:
+            items.append({
+                "key": item.key,
+                "title": item.title,
+                "authors": [c.full_name for c in item.creators],
+                "abstract": item.abstract,
+                "tags": item.tags,
+                "date": item.date,
+            })
+        return {"items": items, "total": result.total}
+    finally:
+        reader.close()
+
+
 def _handle_export(key: str, fmt: str) -> dict:
     reader = _get_reader()
     try:
@@ -316,6 +335,48 @@ def _handle_collection_delete(collection_key: str) -> dict:
     return {"deleted": True, "collection_key": collection_key}
 
 
+def _handle_collection_reorganize(plan: dict) -> dict:
+    """Execute a collection reorganization plan."""
+    writer = _get_writer()
+    collections = plan.get("collections", [])
+    if not collections:
+        raise ValueError("No collections in plan.")
+
+    created: dict[str, str] = {}  # name -> key
+    results = []
+
+    for coll in collections:
+        name = coll["name"]
+        parent_name = coll.get("parent")
+        parent_key = created.get(parent_name) if parent_name else None
+        items = coll.get("items", [])
+
+        try:
+            col_key = writer.create_collection(name, parent_key=parent_key)
+            created[name] = col_key
+
+            moved = []
+            failed = []
+            for item_key in items:
+                try:
+                    writer.move_to_collection(item_key, col_key)
+                    moved.append(item_key)
+                except Exception as e:
+                    failed.append({"key": item_key, "error": str(e)})
+
+            results.append({
+                "name": name,
+                "collection_key": col_key,
+                "items_moved": len(moved),
+                "items_failed": len(failed),
+                "failures": failed,
+            })
+        except Exception as e:
+            results.append({"name": name, "error": str(e)})
+
+    return {"collections_created": len(created), "results": results}
+
+
 def _handle_collection_rename(collection_key: str, new_name: str) -> dict:
     writer = _get_writer()
     writer.rename_collection(collection_key, new_name)
@@ -379,6 +440,16 @@ def summarize(key: str) -> dict:
         key: The Zotero item key.
     """
     return _handle_summarize(key)
+
+
+@mcp.tool()
+def summarize_all(limit: int = 10000) -> dict:
+    """Export all items with key, title, abstract, authors, tags for AI classification.
+
+    Args:
+        limit: Maximum number of items (default 10000).
+    """
+    return _handle_summarize_all(limit)
 
 
 @mcp.tool()
@@ -539,3 +610,19 @@ def collection_rename(collection_key: str, new_name: str) -> dict:
         new_name: The new name for the collection.
     """
     return _handle_collection_rename(collection_key, new_name)
+
+
+@mcp.tool()
+def collection_reorganize(plan: dict) -> dict:
+    """Batch create collections and move items based on a reorganization plan.
+
+    The plan should have this structure:
+    {"collections": [{"name": "Topic", "items": ["KEY1", "KEY2"]}, ...]}
+
+    Optional "parent" field creates subcollections under an already-created collection.
+    Requires API credentials.
+
+    Args:
+        plan: JSON object with collections array, each having name and items list.
+    """
+    return _handle_collection_reorganize(plan)

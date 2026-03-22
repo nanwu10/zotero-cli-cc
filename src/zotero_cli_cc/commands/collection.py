@@ -110,6 +110,63 @@ def collection_delete(ctx: click.Context, key: str) -> None:
         click.echo(format_error(ErrorInfo(message=str(e), context="collection delete", hint="Check collection key"), output_json=json_out))
 
 
+@collection_group.command("reorganize")
+@click.argument("plan_file", type=click.Path(exists=True))
+@click.pass_context
+def collection_reorganize(ctx: click.Context, plan_file: str) -> None:
+    """Batch create collections and move items based on a JSON plan file.
+
+    The plan file should be a JSON file with this structure:
+
+    {"collections": [{"name": "Topic A", "items": ["KEY1", "KEY2"]}, ...]}
+
+    Optional "parent" field creates subcollections.
+    """
+    import json
+    from pathlib import Path
+
+    cfg = load_config(profile=ctx.obj.get("profile"))
+    json_out = ctx.obj.get("json", False)
+    library_id = os.environ.get("ZOT_LIBRARY_ID", cfg.library_id)
+    api_key = os.environ.get("ZOT_API_KEY", cfg.api_key)
+    if not library_id or not api_key:
+        click.echo(format_error(ErrorInfo(message="Write credentials not configured", context="collection reorganize", hint="Run 'zot config init' to set up API credentials"), output_json=json_out))
+        return
+
+    plan_path = Path(plan_file)
+    plan = json.loads(plan_path.read_text())
+    collections = plan.get("collections", [])
+    if not collections:
+        click.echo("No collections in plan.")
+        return
+
+    writer = ZoteroWriter(library_id=library_id, api_key=api_key)
+    created_collections: dict[str, str] = {}  # name -> key mapping for parent lookups
+
+    for coll in collections:
+        name = coll["name"]
+        parent_name = coll.get("parent")
+        parent_key = created_collections.get(parent_name) if parent_name else None
+        items = coll.get("items", [])
+
+        try:
+            col_key = writer.create_collection(name, parent_key=parent_key)
+            created_collections[name] = col_key
+            click.echo(f"Created collection '{name}' ({col_key})")
+
+            for item_key in items:
+                try:
+                    writer.move_to_collection(item_key, col_key)
+                    click.echo(f"  Moved {item_key} -> '{name}'")
+                except Exception as e:
+                    click.echo(f"  Failed to move {item_key}: {e}")
+        except Exception as e:
+            click.echo(f"Failed to create collection '{name}': {e}")
+
+    click.echo(f"\nDone. Created {len(created_collections)} collections.")
+    click.echo(SYNC_REMINDER)
+
+
 @collection_group.command("rename")
 @click.argument("key")
 @click.argument("new_name")

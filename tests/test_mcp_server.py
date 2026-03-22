@@ -273,6 +273,24 @@ class TestHandleSummarize:
         reader.close.assert_called_once()
 
 
+class TestHandleSummarizeAll:
+    @patch("zotero_cli_cc.mcp_server._get_reader")
+    def test_returns_all_items(self, mock_get_reader):
+        from zotero_cli_cc.mcp_server import _handle_summarize_all
+
+        reader = MagicMock()
+        items = [_make_item("K1", "Paper 1"), _make_item("K2", "Paper 2")]
+        reader.search.return_value = SearchResult(items=items, total=2, query="")
+        mock_get_reader.return_value = reader
+
+        result = _handle_summarize_all(10000)
+        assert result["total"] == 2
+        assert len(result["items"]) == 2
+        assert result["items"][0]["key"] == "K1"
+        assert result["items"][0]["abstract"] == "An abstract."
+        reader.close.assert_called_once()
+
+
 class TestHandleExport:
     @patch("zotero_cli_cc.mcp_server._get_reader")
     def test_returns_citation(self, mock_get_reader):
@@ -647,3 +665,53 @@ class TestHandleCollectionRename:
         assert result["collection_key"] == "COL1"
         assert result["new_name"] == "New Name"
         writer.rename_collection.assert_called_once_with("COL1", "New Name")
+
+
+class TestHandleCollectionReorganize:
+    @patch("zotero_cli_cc.mcp_server._get_writer")
+    def test_creates_collections_and_moves_items(self, mock_get_writer):
+        from zotero_cli_cc.mcp_server import _handle_collection_reorganize
+
+        writer = MagicMock()
+        writer.create_collection.side_effect = ["COL_A", "COL_B"]
+        mock_get_writer.return_value = writer
+
+        plan = {
+            "collections": [
+                {"name": "Topic A", "items": ["K1", "K2"]},
+                {"name": "Topic B", "items": ["K3"]},
+            ]
+        }
+        result = _handle_collection_reorganize(plan)
+        assert result["collections_created"] == 2
+        assert len(result["results"]) == 2
+        assert result["results"][0]["items_moved"] == 2
+        assert result["results"][1]["items_moved"] == 1
+        assert writer.create_collection.call_count == 2
+        assert writer.move_to_collection.call_count == 3
+
+    @patch("zotero_cli_cc.mcp_server._get_writer")
+    def test_with_parent_collections(self, mock_get_writer):
+        from zotero_cli_cc.mcp_server import _handle_collection_reorganize
+
+        writer = MagicMock()
+        writer.create_collection.side_effect = ["PARENT1", "CHILD1"]
+        mock_get_writer.return_value = writer
+
+        plan = {
+            "collections": [
+                {"name": "ML", "items": []},
+                {"name": "RL", "parent": "ML", "items": ["K1"]},
+            ]
+        }
+        result = _handle_collection_reorganize(plan)
+        assert result["collections_created"] == 2
+        # Second create_collection should use PARENT1 as parent_key
+        calls = writer.create_collection.call_args_list
+        assert calls[1] == (("RL",), {"parent_key": "PARENT1"})
+
+    def test_empty_plan_raises(self):
+        from zotero_cli_cc.mcp_server import _handle_collection_reorganize
+
+        with pytest.raises(ValueError, match="No collections"):
+            _handle_collection_reorganize({"collections": []})
