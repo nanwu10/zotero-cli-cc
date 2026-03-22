@@ -35,6 +35,7 @@ class ZoteroReader:
     def __init__(self, db_path: Path) -> None:
         self._db_path = db_path
         self._conn: sqlite3.Connection | None = None
+        self._tmp_dir: Path | None = None
 
     def _connect(self) -> sqlite3.Connection:
         if self._conn is not None:
@@ -56,10 +57,12 @@ class ZoteroReader:
                     continue
                 # Fallback: copy DB to temp file
                 return self._connect_from_copy()
+        raise sqlite3.OperationalError(f"Failed to connect to {self._db_path} after {MAX_RETRIES} retries")
 
     def _connect_from_copy(self) -> sqlite3.Connection:
         """Copy DB files to temp dir to avoid WAL locks."""
-        tmp = Path(tempfile.mkdtemp()) / "zotero.sqlite"
+        self._tmp_dir = Path(tempfile.mkdtemp())
+        tmp = self._tmp_dir / "zotero.sqlite"
         shutil.copy2(self._db_path, tmp)
         wal = self._db_path.with_suffix(".sqlite-wal")
         shm = self._db_path.with_suffix(".sqlite-shm")
@@ -76,6 +79,9 @@ class ZoteroReader:
         if self._conn:
             self._conn.close()
             self._conn = None
+        if self._tmp_dir and self._tmp_dir.exists():
+            shutil.rmtree(self._tmp_dir, ignore_errors=True)
+            self._tmp_dir = None
 
     def __enter__(self):  # type: () -> ZoteroReader
         return self
@@ -204,20 +210,12 @@ class ZoteroReader:
             else:
                 item_ids = set()
 
-        # Resolve items
-        items: list[Item] = []
-        for item_id in sorted(item_ids):
-            key_row = conn.execute(
-                "SELECT key FROM items WHERE itemID = ?", (item_id,)
-            ).fetchone()
-            if key_row:
-                item = self.get_item(key_row["key"])
-                if item:
-                    items.append(item)
-            if len(items) >= limit:
-                break
+        # Resolve items in batch
+        total = len(item_ids)
+        target_ids = sorted(item_ids)[:limit]
+        items = self._get_items_batch(conn, target_ids) if target_ids else []
 
-        return SearchResult(items=items, total=len(item_ids), query=query)
+        return SearchResult(items=items, total=total, query=query)
 
     def get_notes(self, key: str) -> list[Note]:
         conn = self._connect()
@@ -396,6 +394,109 @@ class ZoteroReader:
 
     # --- Private helpers ---
 
+    def _get_items_batch(self, conn: sqlite3.Connection, item_ids: list[int]) -> list[Item]:
+        """Resolve multiple item IDs to Items using bulk queries instead of N+1."""
+        if not item_ids:
+            return []
+
+        placeholders = ",".join("?" * len(item_ids))
+
+        # Fetch base item rows
+        rows = conn.execute(
+            f"SELECT itemID, itemTypeID, key, dateAdded, dateModified "
+            f"FROM items WHERE itemID IN ({placeholders}) AND itemTypeID {_EXCLUDED_SQL}",
+            item_ids,
+        ).fetchall()
+        if not rows:
+            return []
+
+        id_to_row = {r["itemID"]: r for r in rows}
+        valid_ids = list(id_to_row.keys())
+        valid_ph = ",".join("?" * len(valid_ids))
+
+        # Batch fetch item types
+        type_ids = list({r["itemTypeID"] for r in rows})
+        type_ph = ",".join("?" * len(type_ids))
+        type_rows = conn.execute(
+            f"SELECT itemTypeID, typeName FROM itemTypes WHERE itemTypeID IN ({type_ph})",
+            type_ids,
+        ).fetchall()
+        type_map = {r["itemTypeID"]: r["typeName"] for r in type_rows}
+
+        # Batch fetch fields
+        field_rows = conn.execute(
+            f"SELECT id.itemID, f.fieldName, iv.value FROM itemData id "
+            f"JOIN fields f ON id.fieldID = f.fieldID "
+            f"JOIN itemDataValues iv ON id.valueID = iv.valueID "
+            f"WHERE id.itemID IN ({valid_ph})",
+            valid_ids,
+        ).fetchall()
+        fields_map: dict[int, dict[str, str]] = {}
+        for r in field_rows:
+            fields_map.setdefault(r["itemID"], {})[r["fieldName"]] = r["value"]
+
+        # Batch fetch creators
+        creator_rows = conn.execute(
+            f"SELECT ic.itemID, c.firstName, c.lastName, ct.creatorType "
+            f"FROM itemCreators ic "
+            f"JOIN creators c ON ic.creatorID = c.creatorID "
+            f"JOIN creatorTypes ct ON ic.creatorTypeID = ct.creatorTypeID "
+            f"WHERE ic.itemID IN ({valid_ph}) ORDER BY ic.itemID, ic.orderIndex",
+            valid_ids,
+        ).fetchall()
+        creators_map: dict[int, list[Creator]] = {}
+        for r in creator_rows:
+            creators_map.setdefault(r["itemID"], []).append(
+                Creator(r["firstName"] or "", r["lastName"] or "", r["creatorType"])
+            )
+
+        # Batch fetch tags
+        tag_rows = conn.execute(
+            f"SELECT it.itemID, t.name FROM itemTags it "
+            f"JOIN tags t ON it.tagID = t.tagID "
+            f"WHERE it.itemID IN ({valid_ph})",
+            valid_ids,
+        ).fetchall()
+        tags_map: dict[int, list[str]] = {}
+        for r in tag_rows:
+            tags_map.setdefault(r["itemID"], []).append(r["name"])
+
+        # Batch fetch collections
+        coll_rows = conn.execute(
+            f"SELECT ci.itemID, c.key FROM collectionItems ci "
+            f"JOIN collections c ON ci.collectionID = c.collectionID "
+            f"WHERE ci.itemID IN ({valid_ph})",
+            valid_ids,
+        ).fetchall()
+        colls_map: dict[int, list[str]] = {}
+        for r in coll_rows:
+            colls_map.setdefault(r["itemID"], []).append(r["key"])
+
+        # Assemble items in original order
+        items: list[Item] = []
+        for item_id in item_ids:
+            if item_id not in id_to_row:
+                continue
+            row = id_to_row[item_id]
+            fields = fields_map.get(item_id, {})
+            items.append(Item(
+                key=row["key"],
+                item_type=type_map.get(row["itemTypeID"], "unknown"),
+                title=fields.get("title", ""),
+                creators=creators_map.get(item_id, []),
+                abstract=fields.get("abstractNote"),
+                date=fields.get("date"),
+                url=fields.get("url"),
+                doi=fields.get("DOI"),
+                tags=tags_map.get(item_id, []),
+                collections=colls_map.get(item_id, []),
+                date_added=row["dateAdded"],
+                date_modified=row["dateModified"],
+                extra={k: v for k, v in fields.items()
+                       if k not in ("title", "abstractNote", "date", "url", "DOI")},
+            ))
+        return items
+
     def _get_item_fields(self, conn: sqlite3.Connection, item_id: int) -> dict[str, str]:
         rows = conn.execute(
             "SELECT f.fieldName, iv.value FROM itemData id "
@@ -436,16 +537,24 @@ class ZoteroReader:
         return [r["key"] for r in rows]
 
     @staticmethod
+    def _escape_bibtex(value: str) -> str:
+        """Escape special LaTeX/BibTeX characters in a field value."""
+        for char, escaped in (("&", r"\&"), ("%", r"\%"), ("#", r"\#"), ("_", r"\_")):
+            value = value.replace(char, escaped)
+        return value
+
+    @staticmethod
     def _to_bibtex(item: Item) -> str:
         type_map = {"journalArticle": "article", "book": "book", "thesis": "phdthesis"}
         bib_type = type_map.get(item.item_type, "misc")
         cite_key = item.key.lower()
+        esc = ZoteroReader._escape_bibtex
         authors = " and ".join(
-            f"{c.last_name}, {c.first_name}" for c in item.creators if c.creator_type == "author"
+            f"{esc(c.last_name)}, {esc(c.first_name)}" for c in item.creators if c.creator_type == "author"
         )
         lines = [f"@{bib_type}{{{cite_key},"]
         if item.title:
-            lines.append(f"  title = {{{item.title}}},")
+            lines.append(f"  title = {{{esc(item.title)}}},")
         if authors:
             lines.append(f"  author = {{{authors}}},")
         if item.date:

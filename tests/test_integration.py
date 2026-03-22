@@ -3,6 +3,7 @@ import json
 
 from click.testing import CliRunner
 
+from zotero_cli_cc import __version__
 from zotero_cli_cc.cli import main
 
 
@@ -63,4 +64,4 @@ def test_version():
     runner = CliRunner()
     r = runner.invoke(main, ["--version"])
     assert r.exit_code == 0
-    assert "0.1.0" in r.output
+    assert __version__ in r.output
