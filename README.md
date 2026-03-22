@@ -199,27 +199,19 @@ zot --version                              # 查看版本
 
 ## 架构
 
-```
-┌─────────────────────────────────┐
-│        zot CLI (Click)          │
-│  search │ list │ read │ ...     │
-└──────────────┬──────────────────┘
-               │
-┌──────────────▼──────────────────┐
-│        核心服务层                │
-│  ZoteroReader  │  ZoteroWriter  │
-│  (SQLite 只读) │  (Web API)     │
-└───────┬────────┴────────┬───────┘
-        │                 │
-   ┌────▼────┐    ┌───────▼────────┐
-   │ SQLite  │    │ Zotero Web API │
-   │ (本地)   │    │ (远程)         │
-   └─────────┘    └────────────────┘
-        │
-   ┌────▼──────────┐
-   │ ~/Zotero/     │
-   │ storage/*.pdf │
-   └───────────────┘
+```mermaid
+graph TD
+    A["zot CLI (Click)<br>search | list | read | pdf | ..."] --> B["核心服务层"]
+    C["MCP Server (FastMCP)<br>stdio 传输"] --> B
+
+    subgraph B["核心服务层"]
+        R["ZoteroReader<br>(SQLite 只读)"]
+        W["ZoteroWriter<br>(Web API)"]
+    end
+
+    R --> D["SQLite<br>~/Zotero/zotero.sqlite"]
+    W --> E["Zotero Web API<br>(远程)"]
+    D --> F["~/Zotero/storage/*.pdf"]
 ```
 
 ## 在 Claude Code 中使用

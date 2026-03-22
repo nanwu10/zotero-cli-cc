@@ -191,27 +191,19 @@ zot pdf ABC123 --pages 1-5         # Extract specific pages
 
 ## Architecture
 
-```
-┌─────────────────────────────────┐
-│        zot CLI (Click)          │
-│  search │ list │ read │ ...     │
-└──────────────┬──────────────────┘
-               │
-┌──────────────▼──────────────────┐
-│         Core Services           │
-│  ZoteroReader  │  ZoteroWriter  │
-│  (SQLite R/O)  │  (Web API)     │
-└───────┬────────┴────────┬───────┘
-        │                 │
-   ┌────▼────┐    ┌───────▼────────┐
-   │ SQLite  │    │ Zotero Web API │
-   │ (local) │    │ (remote)       │
-   └─────────┘    └────────────────┘
-        │
-   ┌────▼──────────┐
-   │ ~/Zotero/     │
-   │ storage/*.pdf │
-   └───────────────┘
+```mermaid
+graph TD
+    A["zot CLI (Click)<br>search | list | read | pdf | ..."] --> B["Core Services"]
+    C["MCP Server (FastMCP)<br>stdio transport"] --> B
+
+    subgraph B["Core Services"]
+        R["ZoteroReader<br>(SQLite read-only)"]
+        W["ZoteroWriter<br>(Web API)"]
+    end
+
+    R --> D["SQLite<br>~/Zotero/zotero.sqlite"]
+    W --> E["Zotero Web API<br>(remote)"]
+    D --> F["~/Zotero/storage/*.pdf"]
 ```
 
 ## Using with Claude Code
