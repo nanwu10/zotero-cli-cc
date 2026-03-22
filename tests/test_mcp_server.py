@@ -724,9 +724,11 @@ class TestHandleCollectionReorganize:
         calls = writer.create_collection.call_args_list
         assert calls[1] == (("RL",), {"parent_key": "PARENT1"})
 
-    def test_empty_plan_raises(self):
+    @patch("zotero_cli_cc.mcp_server._get_writer")
+    def test_empty_plan_raises(self, mock_get_writer):
         from zotero_cli_cc.mcp_server import _handle_collection_reorganize
 
+        mock_get_writer.return_value = MagicMock()
         with pytest.raises(ValueError, match="No collections"):
             _handle_collection_reorganize({"collections": []})
 
