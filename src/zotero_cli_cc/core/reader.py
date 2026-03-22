@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
 import shutil
 import sqlite3
 import tempfile
@@ -35,6 +34,7 @@ class ZoteroReader:
         self._conn: sqlite3.Connection | None = None
         self._tmp_dir: Path | None = None
         self._excluded_sql: str | None = None
+        self._excluded_ids: tuple[int, ...] | None = None
 
     def _connect(self) -> sqlite3.Connection:
         if self._conn is not None:
@@ -58,23 +58,37 @@ class ZoteroReader:
                 return self._connect_from_copy()
         raise sqlite3.OperationalError(f"Failed to connect to {self._db_path} after {MAX_RETRIES} retries")
 
-    def _get_excluded_sql(self) -> str:
-        """Build SQL fragment to exclude attachment/note/annotation types, looked up by name."""
-        if self._excluded_sql is not None:
-            return self._excluded_sql
+    def _get_excluded_ids(self) -> tuple[int, ...]:
+        """Look up excluded type IDs by name (cached after first call)."""
+        if self._excluded_ids is not None:
+            return self._excluded_ids
         conn = self._connect()
         placeholders = ",".join("?" * len(_EXCLUDED_TYPE_NAMES))
         rows = conn.execute(
             f"SELECT itemTypeID FROM itemTypes WHERE typeName IN ({placeholders})",
             _EXCLUDED_TYPE_NAMES,
         ).fetchall()
-        ids = [str(r["itemTypeID"]) for r in rows]
-        self._excluded_sql = f"NOT IN ({','.join(ids)})" if ids else "!= -1"
+        self._excluded_ids = tuple(r["itemTypeID"] for r in rows) if rows else (-1,)
+        return self._excluded_ids
+
+    def _get_excluded_sql(self) -> str:
+        """Build SQL fragment with literal IDs (for simple string concatenation)."""
+        if self._excluded_sql is not None:
+            return self._excluded_sql
+        ids = self._get_excluded_ids()
+        self._excluded_sql = f"NOT IN ({','.join(str(i) for i in ids)})"
         return self._excluded_sql
+
+    def _excluded_filter(self) -> tuple[str, tuple[int, ...]]:
+        """Return (SQL fragment with ? placeholders, parameter tuple) for excluded types."""
+        ids = self._get_excluded_ids()
+        ph = ",".join("?" * len(ids))
+        return f"NOT IN ({ph})", ids
 
     def _connect_from_copy(self) -> sqlite3.Connection:
         """Copy DB files to temp dir to avoid WAL locks."""
-        self._tmp_dir = Path(tempfile.mkdtemp())
+        self._tmp_dir_obj = tempfile.TemporaryDirectory()
+        self._tmp_dir = Path(self._tmp_dir_obj.name)
         tmp = self._tmp_dir / "zotero.sqlite"
         shutil.copy2(self._db_path, tmp)
         wal = self._db_path.with_suffix(".sqlite-wal")
@@ -92,14 +106,20 @@ class ZoteroReader:
         if self._conn:
             self._conn.close()
             self._conn = None
-        if self._tmp_dir and self._tmp_dir.exists():
-            shutil.rmtree(self._tmp_dir, ignore_errors=True)
+        if hasattr(self, "_tmp_dir_obj") and self._tmp_dir_obj is not None:
+            self._tmp_dir_obj.cleanup()
+            self._tmp_dir_obj = None
             self._tmp_dir = None
 
-    def __enter__(self):  # type: () -> ZoteroReader
+    def __enter__(self) -> ZoteroReader:
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):  # type: ignore[override]
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> None:
         self.close()
 
     def get_schema_version(self) -> int | None:
@@ -158,9 +178,11 @@ class ZoteroReader:
         query: str,
         collection: str | None = None,
         limit: int = 50,
+        offset: int = 0,
     ) -> SearchResult:
         conn = self._connect()
         item_ids: set[int] = set()
+        excl_sql, excl_params = self._excluded_filter()
 
         if query:
             like = f"%{query}%"
@@ -169,8 +191,8 @@ class ZoteroReader:
                 "SELECT DISTINCT i.itemID FROM items i "
                 "JOIN itemData id ON i.itemID = id.itemID "
                 "JOIN itemDataValues iv ON id.valueID = iv.valueID "
-                "WHERE iv.value LIKE ? AND i.itemTypeID " + self._get_excluded_sql(),
-                (like,),
+                f"WHERE iv.value LIKE ? AND i.itemTypeID {excl_sql}",
+                (like, *excl_params),
             ).fetchall()
             item_ids.update(r["itemID"] for r in rows)
 
@@ -180,8 +202,8 @@ class ZoteroReader:
                 "JOIN creators c ON ic.creatorID = c.creatorID "
                 "JOIN items i ON ic.itemID = i.itemID "
                 "WHERE (c.firstName LIKE ? OR c.lastName LIKE ?) "
-                "AND i.itemTypeID " + self._get_excluded_sql(),
-                (like, like),
+                f"AND i.itemTypeID {excl_sql}",
+                (like, like, *excl_params),
             ).fetchall()
             item_ids.update(r["itemID"] for r in rows)
 
@@ -190,8 +212,8 @@ class ZoteroReader:
                 "SELECT DISTINCT it.itemID FROM itemTags it "
                 "JOIN tags t ON it.tagID = t.tagID "
                 "JOIN items i ON it.itemID = i.itemID "
-                "WHERE t.name LIKE ? AND i.itemTypeID " + self._get_excluded_sql(),
-                (like,),
+                f"WHERE t.name LIKE ? AND i.itemTypeID {excl_sql}",
+                (like, *excl_params),
             ).fetchall()
             item_ids.update(r["itemID"] for r in rows)
 
@@ -206,7 +228,8 @@ class ZoteroReader:
             item_ids.update(r["parentItemID"] for r in rows)
         else:
             rows = conn.execute(
-                "SELECT itemID FROM items WHERE itemTypeID " + self._get_excluded_sql()
+                f"SELECT itemID FROM items WHERE itemTypeID {excl_sql}",
+                excl_params,
             ).fetchall()
             item_ids.update(r["itemID"] for r in rows)
 
@@ -229,7 +252,7 @@ class ZoteroReader:
 
         # Resolve items in batch
         total = len(item_ids)
-        target_ids = sorted(item_ids)[:limit]
+        target_ids = sorted(item_ids)[offset:offset + limit]
         items = self._get_items_batch(conn, target_ids) if target_ids else []
 
         return SearchResult(items=items, total=total, query=query)
@@ -673,10 +696,5 @@ class ZoteroReader:
 
     @staticmethod
     def _html_to_markdown(html: str) -> str:
-        text = re.sub(r"<p>", "", html)
-        text = re.sub(r"</p>", "\n", text)
-        text = re.sub(r"<br\s*/?>", "\n", text)
-        text = re.sub(r"<strong>(.*?)</strong>", r"**\1**", text)
-        text = re.sub(r"<em>(.*?)</em>", r"*\1*", text)
-        text = re.sub(r"<[^>]+>", "", text)
-        return text.strip()
+        from markdownify import markdownify as md
+        return md(html, strip=["img"]).strip()

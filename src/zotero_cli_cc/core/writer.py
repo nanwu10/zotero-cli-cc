@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import httpx
 from pyzotero import zotero
 from pyzotero.zotero_errors import ResourceNotFoundError
-from httpx import ConnectError as HttpxConnectError
+from httpx import ConnectError as HttpxConnectError, TimeoutException as HttpxTimeoutException
 
 
 SYNC_REMINDER = "Change saved. Run Zotero sync to update local database."
+
+API_TIMEOUT = 30.0  # seconds
 
 
 class ZoteroWriteError(Exception):
@@ -14,8 +17,9 @@ class ZoteroWriteError(Exception):
 
 
 class ZoteroWriter:
-    def __init__(self, library_id: str, api_key: str) -> None:
+    def __init__(self, library_id: str, api_key: str, timeout: float = API_TIMEOUT) -> None:
         self._zot = zotero.Zotero(library_id, "user", api_key)
+        self._zot.client.timeout = httpx.Timeout(timeout)
 
     def _check_response(self, resp: dict) -> str:
         """Check create response, return key or raise error."""
@@ -34,7 +38,7 @@ class ZoteroWriter:
             template["parentItem"] = parent_key
             resp = self._zot.create_items([template])
             return self._check_response(resp)
-        except HttpxConnectError as e:
+        except (HttpxConnectError, HttpxTimeoutException) as e:
             raise ZoteroWriteError(f"Network error: {e}") from e
 
     def update_note(self, note_key: str, content: str) -> None:
@@ -44,7 +48,7 @@ class ZoteroWriter:
             self._zot.update_item(item)
         except ResourceNotFoundError:
             raise ZoteroWriteError(f"Note '{note_key}' not found")
-        except HttpxConnectError as e:
+        except (HttpxConnectError, HttpxTimeoutException) as e:
             raise ZoteroWriteError(f"Network error: {e}") from e
 
     def add_item(self, doi: str | None = None, url: str | None = None) -> str:
@@ -60,7 +64,7 @@ class ZoteroWriter:
             template["url"] = url
             resp = self._zot.create_items([template])
             return self._check_response(resp)
-        except HttpxConnectError as e:
+        except (HttpxConnectError, HttpxTimeoutException) as e:
             raise ZoteroWriteError(f"Network error: {e}") from e
 
     def delete_item(self, key: str) -> None:
@@ -69,7 +73,7 @@ class ZoteroWriter:
             self._zot.delete_item(item)
         except ResourceNotFoundError:
             raise ZoteroWriteError(f"Item '{key}' not found")
-        except HttpxConnectError as e:
+        except (HttpxConnectError, HttpxTimeoutException) as e:
             raise ZoteroWriteError(f"Network error: {e}") from e
 
     def add_tags(self, key: str, tags: list[str]) -> None:
@@ -81,7 +85,7 @@ class ZoteroWriter:
             self._zot.update_item(item)
         except ResourceNotFoundError:
             raise ZoteroWriteError(f"Item '{key}' not found")
-        except HttpxConnectError as e:
+        except (HttpxConnectError, HttpxTimeoutException) as e:
             raise ZoteroWriteError(f"Network error: {e}") from e
 
     def remove_tags(self, key: str, tags: list[str]) -> None:
@@ -93,7 +97,7 @@ class ZoteroWriter:
             self._zot.update_item(item)
         except ResourceNotFoundError:
             raise ZoteroWriteError(f"Item '{key}' not found")
-        except HttpxConnectError as e:
+        except (HttpxConnectError, HttpxTimeoutException) as e:
             raise ZoteroWriteError(f"Network error: {e}") from e
 
     def create_collection(self, name: str, parent_key: str | None = None) -> str:
@@ -101,7 +105,7 @@ class ZoteroWriter:
             payload = [{"name": name, "parentCollection": parent_key or False}]
             resp = self._zot.create_collections(payload)
             return self._check_response(resp)
-        except HttpxConnectError as e:
+        except (HttpxConnectError, HttpxTimeoutException) as e:
             raise ZoteroWriteError(f"Network error: {e}") from e
 
     def move_to_collection(self, item_key: str, collection_key: str) -> None:
@@ -109,7 +113,7 @@ class ZoteroWriter:
             self._zot.addto_collection(collection_key, self._zot.item(item_key))
         except ResourceNotFoundError:
             raise ZoteroWriteError(f"Item or collection not found")
-        except HttpxConnectError as e:
+        except (HttpxConnectError, HttpxTimeoutException) as e:
             raise ZoteroWriteError(f"Network error: {e}") from e
 
     def delete_collection(self, key: str) -> None:
@@ -118,7 +122,7 @@ class ZoteroWriter:
             self._zot.delete_collection(coll)
         except ResourceNotFoundError:
             raise ZoteroWriteError(f"Collection '{key}' not found")
-        except HttpxConnectError as e:
+        except (HttpxConnectError, HttpxTimeoutException) as e:
             raise ZoteroWriteError(f"Network error: {e}") from e
 
     def rename_collection(self, key: str, new_name: str) -> None:
@@ -128,5 +132,5 @@ class ZoteroWriter:
             self._zot.update_collection(coll)
         except ResourceNotFoundError:
             raise ZoteroWriteError(f"Collection '{key}' not found")
-        except HttpxConnectError as e:
+        except (HttpxConnectError, HttpxTimeoutException) as e:
             raise ZoteroWriteError(f"Network error: {e}") from e

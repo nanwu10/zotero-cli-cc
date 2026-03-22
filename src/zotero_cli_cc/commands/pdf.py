@@ -6,7 +6,7 @@ import click
 
 from zotero_cli_cc.config import load_config, get_data_dir
 from zotero_cli_cc.core.reader import ZoteroReader
-from zotero_cli_cc.core.pdf_extractor import extract_text_from_pdf
+from zotero_cli_cc.core.pdf_extractor import extract_text_from_pdf, PdfExtractionError
 from zotero_cli_cc.formatter import format_error
 from zotero_cli_cc.models import ErrorInfo
 
@@ -45,15 +45,20 @@ def pdf_cmd(ctx: click.Context, key: str, pages: str | None) -> None:
             return
         from zotero_cli_cc.core.pdf_cache import PdfCache
         cache = PdfCache()
-        if page_range is None:
-            cached = cache.get(pdf_path)
-            if cached is not None:
-                text = cached
+        try:
+            if page_range is None:
+                cached = cache.get(pdf_path)
+                if cached is not None:
+                    text = cached
+                else:
+                    text = extract_text_from_pdf(pdf_path)
+                    cache.put(pdf_path, text)
             else:
-                text = extract_text_from_pdf(pdf_path)
-                cache.put(pdf_path, text)
-        else:
-            text = extract_text_from_pdf(pdf_path, pages=page_range)
+                text = extract_text_from_pdf(pdf_path, pages=page_range)
+        except PdfExtractionError as e:
+            cache.close()
+            click.echo(format_error(ErrorInfo(message=str(e), context="pdf", hint="The PDF may be corrupted or password-protected"), output_json=json_out))
+            return
         cache.close()
         if json_out:
             click.echo(json.dumps({"key": key, "pages": pages, "text": text}, ensure_ascii=False))

@@ -10,8 +10,9 @@ from zotero_cli_cc.core.reader import ZoteroReader
 
 
 @click.command("summarize-all")
+@click.option("--offset", default=0, help="Skip first N items (for pagination)")
 @click.pass_context
-def summarize_all_cmd(ctx: click.Context) -> None:
+def summarize_all_cmd(ctx: click.Context, offset: int) -> None:
     """Export all items with key, title, and abstract for AI classification."""
     cfg = load_config(profile=ctx.obj.get("profile"))
     data_dir = get_data_dir(cfg)
@@ -19,7 +20,7 @@ def summarize_all_cmd(ctx: click.Context) -> None:
     limit = ctx.obj.get("limit", 10000)
     reader = ZoteroReader(db_path)
     try:
-        result = reader.search("", limit=limit)
+        result = reader.search("", limit=limit, offset=offset)
         items = []
         for item in result.items:
             items.append({

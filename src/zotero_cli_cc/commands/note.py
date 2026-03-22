@@ -6,7 +6,7 @@ import click
 
 from zotero_cli_cc.config import load_config, get_data_dir
 from zotero_cli_cc.core.reader import ZoteroReader
-from zotero_cli_cc.core.writer import ZoteroWriter, SYNC_REMINDER
+from zotero_cli_cc.core.writer import ZoteroWriter, ZoteroWriteError, SYNC_REMINDER
 from zotero_cli_cc.formatter import format_notes, format_error
 from zotero_cli_cc.models import ErrorInfo
 
@@ -28,9 +28,12 @@ def note_cmd(ctx: click.Context, key: str, content: str | None) -> None:
             click.echo(format_error(ErrorInfo(message="Write credentials not configured", context="note", hint="Run 'zot config init' to set up API credentials"), output_json=json_out))
             return
         writer = ZoteroWriter(library_id=library_id, api_key=api_key)
-        note_key = writer.add_note(key, content)
-        click.echo(f"Note added: {note_key}")
-        click.echo(SYNC_REMINDER)
+        try:
+            note_key = writer.add_note(key, content)
+            click.echo(f"Note added: {note_key}")
+            click.echo(SYNC_REMINDER)
+        except ZoteroWriteError as e:
+            click.echo(format_error(ErrorInfo(message=str(e), context="note", hint="Check item key and API credentials"), output_json=json_out))
     else:
         # Read mode
         data_dir = get_data_dir(cfg)

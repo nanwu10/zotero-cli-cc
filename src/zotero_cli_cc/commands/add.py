@@ -5,7 +5,7 @@ import os
 import click
 
 from zotero_cli_cc.config import load_config
-from zotero_cli_cc.core.writer import ZoteroWriter, SYNC_REMINDER
+from zotero_cli_cc.core.writer import ZoteroWriter, ZoteroWriteError, SYNC_REMINDER
 from zotero_cli_cc.formatter import format_error
 from zotero_cli_cc.models import ErrorInfo
 
@@ -27,6 +27,9 @@ def add_cmd(ctx: click.Context, doi: str | None, url: str | None) -> None:
         click.echo(format_error(ErrorInfo(message="Provide --doi or --url", context="add", hint="Example: zot add --doi '10.1038/...' or --url 'https://...'"), output_json=json_out))
         return
     writer = ZoteroWriter(library_id=library_id, api_key=api_key)
-    key = writer.add_item(doi=doi, url=url)
-    click.echo(f"Item added: {key}")
-    click.echo(SYNC_REMINDER)
+    try:
+        key = writer.add_item(doi=doi, url=url)
+        click.echo(f"Item added: {key}")
+        click.echo(SYNC_REMINDER)
+    except ZoteroWriteError as e:
+        click.echo(format_error(ErrorInfo(message=str(e), context="add", hint="Check API credentials and network"), output_json=json_out))
