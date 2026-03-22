@@ -65,3 +65,68 @@ def collection_create(ctx: click.Context, name: str, parent: str | None) -> None
     key = writer.create_collection(name, parent_key=parent)
     click.echo(f"Collection created: {key}")
     click.echo(SYNC_REMINDER)
+
+
+@collection_group.command("move")
+@click.argument("item_key")
+@click.argument("collection_key")
+@click.pass_context
+def collection_move(ctx: click.Context, item_key: str, collection_key: str) -> None:
+    """Move an item to a collection."""
+    cfg = load_config(profile=ctx.obj.get("profile"))
+    json_out = ctx.obj.get("json", False)
+    library_id = os.environ.get("ZOT_LIBRARY_ID", cfg.library_id)
+    api_key = os.environ.get("ZOT_API_KEY", cfg.api_key)
+    if not library_id or not api_key:
+        click.echo(format_error(ErrorInfo(message="Write credentials not configured", context="collection", hint="Run 'zot config init' to set up API credentials"), output_json=json_out))
+        return
+    writer = ZoteroWriter(library_id=library_id, api_key=api_key)
+    try:
+        writer.move_to_collection(item_key, collection_key)
+        click.echo(f"Item {item_key} moved to collection {collection_key}")
+        click.echo(SYNC_REMINDER)
+    except Exception as e:
+        click.echo(format_error(ErrorInfo(message=str(e), context="collection move", hint="Check item and collection keys"), output_json=json_out))
+
+
+@collection_group.command("delete")
+@click.argument("key")
+@click.pass_context
+def collection_delete(ctx: click.Context, key: str) -> None:
+    """Delete a collection."""
+    cfg = load_config(profile=ctx.obj.get("profile"))
+    json_out = ctx.obj.get("json", False)
+    library_id = os.environ.get("ZOT_LIBRARY_ID", cfg.library_id)
+    api_key = os.environ.get("ZOT_API_KEY", cfg.api_key)
+    if not library_id or not api_key:
+        click.echo(format_error(ErrorInfo(message="Write credentials not configured", context="collection", hint="Run 'zot config init' to set up API credentials"), output_json=json_out))
+        return
+    writer = ZoteroWriter(library_id=library_id, api_key=api_key)
+    try:
+        writer.delete_collection(key)
+        click.echo(f"Collection {key} deleted")
+        click.echo(SYNC_REMINDER)
+    except Exception as e:
+        click.echo(format_error(ErrorInfo(message=str(e), context="collection delete", hint="Check collection key"), output_json=json_out))
+
+
+@collection_group.command("rename")
+@click.argument("key")
+@click.argument("new_name")
+@click.pass_context
+def collection_rename(ctx: click.Context, key: str, new_name: str) -> None:
+    """Rename a collection."""
+    cfg = load_config(profile=ctx.obj.get("profile"))
+    json_out = ctx.obj.get("json", False)
+    library_id = os.environ.get("ZOT_LIBRARY_ID", cfg.library_id)
+    api_key = os.environ.get("ZOT_API_KEY", cfg.api_key)
+    if not library_id or not api_key:
+        click.echo(format_error(ErrorInfo(message="Write credentials not configured", context="collection", hint="Run 'zot config init' to set up API credentials"), output_json=json_out))
+        return
+    writer = ZoteroWriter(library_id=library_id, api_key=api_key)
+    try:
+        writer.rename_collection(key, new_name)
+        click.echo(f"Collection {key} renamed to '{new_name}'")
+        click.echo(SYNC_REMINDER)
+    except Exception as e:
+        click.echo(format_error(ErrorInfo(message=str(e), context="collection rename", hint="Check collection key"), output_json=json_out))

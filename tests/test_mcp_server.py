@@ -605,3 +605,45 @@ class TestHandleCollectionCreate:
         result = _handle_collection_create("Sub Collection", "COL1")
         assert result["collection_key"] == "COL3"
         writer.create_collection.assert_called_once_with("Sub Collection", parent_key="COL1")
+
+
+class TestHandleCollectionMove:
+    @patch("zotero_cli_cc.mcp_server._get_writer")
+    def test_moves_item(self, mock_get_writer):
+        from zotero_cli_cc.mcp_server import _handle_collection_move
+
+        writer = MagicMock()
+        mock_get_writer.return_value = writer
+
+        result = _handle_collection_move("ITEM1", "COL1")
+        assert result["item_key"] == "ITEM1"
+        assert result["collection_key"] == "COL1"
+        writer.move_to_collection.assert_called_once_with("ITEM1", "COL1")
+
+
+class TestHandleCollectionDelete:
+    @patch("zotero_cli_cc.mcp_server._get_writer")
+    def test_deletes_collection(self, mock_get_writer):
+        from zotero_cli_cc.mcp_server import _handle_collection_delete
+
+        writer = MagicMock()
+        mock_get_writer.return_value = writer
+
+        result = _handle_collection_delete("COL1")
+        assert result["deleted"] is True
+        assert result["collection_key"] == "COL1"
+        writer.delete_collection.assert_called_once_with("COL1")
+
+
+class TestHandleCollectionRename:
+    @patch("zotero_cli_cc.mcp_server._get_writer")
+    def test_renames_collection(self, mock_get_writer):
+        from zotero_cli_cc.mcp_server import _handle_collection_rename
+
+        writer = MagicMock()
+        mock_get_writer.return_value = writer
+
+        result = _handle_collection_rename("COL1", "New Name")
+        assert result["collection_key"] == "COL1"
+        assert result["new_name"] == "New Name"
+        writer.rename_collection.assert_called_once_with("COL1", "New Name")

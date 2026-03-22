@@ -111,3 +111,22 @@ class ZoteroWriter:
             raise ZoteroWriteError(f"Item or collection not found")
         except HttpxConnectError as e:
             raise ZoteroWriteError(f"Network error: {e}") from e
+
+    def delete_collection(self, key: str) -> None:
+        try:
+            coll = self._zot.collection(key)
+            self._zot.delete_collection(coll)
+        except ResourceNotFoundError:
+            raise ZoteroWriteError(f"Collection '{key}' not found")
+        except HttpxConnectError as e:
+            raise ZoteroWriteError(f"Network error: {e}") from e
+
+    def rename_collection(self, key: str, new_name: str) -> None:
+        try:
+            coll = self._zot.collection(key)
+            coll["data"]["name"] = new_name
+            self._zot.update_collection(coll)
+        except ResourceNotFoundError:
+            raise ZoteroWriteError(f"Collection '{key}' not found")
+        except HttpxConnectError as e:
+            raise ZoteroWriteError(f"Network error: {e}") from e

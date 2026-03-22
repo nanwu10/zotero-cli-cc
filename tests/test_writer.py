@@ -82,3 +82,56 @@ def test_delete_item_not_found(mock_zotero_cls):
     writer = ZoteroWriter(library_id="123", api_key="abc")
     with pytest.raises(ZoteroWriteError, match="not found"):
         writer.delete_item("NONEXIST")
+
+
+# --- Collection management tests ---
+
+@patch("zotero_cli_cc.core.writer.zotero.Zotero")
+def test_delete_collection(mock_zotero_cls):
+    mock_zot = MagicMock()
+    mock_zotero_cls.return_value = mock_zot
+    mock_zot.collection.return_value = {"key": "COL1", "version": 1}
+
+    writer = ZoteroWriter(library_id="123", api_key="abc")
+    writer.delete_collection("COL1")
+    mock_zot.collection.assert_called_once_with("COL1")
+    mock_zot.delete_collection.assert_called_once()
+
+
+@patch("zotero_cli_cc.core.writer.zotero.Zotero")
+def test_delete_collection_not_found(mock_zotero_cls):
+    from pyzotero.zotero_errors import ResourceNotFoundError
+    mock_zot = MagicMock()
+    mock_zotero_cls.return_value = mock_zot
+    mock_zot.collection.side_effect = ResourceNotFoundError("Not found")
+
+    writer = ZoteroWriter(library_id="123", api_key="abc")
+    with pytest.raises(ZoteroWriteError, match="not found"):
+        writer.delete_collection("NONEXIST")
+
+
+@patch("zotero_cli_cc.core.writer.zotero.Zotero")
+def test_rename_collection(mock_zotero_cls):
+    mock_zot = MagicMock()
+    mock_zotero_cls.return_value = mock_zot
+    mock_zot.collection.return_value = {"key": "COL1", "data": {"name": "Old Name"}, "version": 1}
+
+    writer = ZoteroWriter(library_id="123", api_key="abc")
+    writer.rename_collection("COL1", "New Name")
+    mock_zot.collection.assert_called_once_with("COL1")
+    mock_zot.update_collection.assert_called_once()
+    # Verify the name was updated in the payload
+    call_args = mock_zot.update_collection.call_args[0][0]
+    assert call_args["data"]["name"] == "New Name"
+
+
+@patch("zotero_cli_cc.core.writer.zotero.Zotero")
+def test_rename_collection_not_found(mock_zotero_cls):
+    from pyzotero.zotero_errors import ResourceNotFoundError
+    mock_zot = MagicMock()
+    mock_zotero_cls.return_value = mock_zot
+    mock_zot.collection.side_effect = ResourceNotFoundError("Not found")
+
+    writer = ZoteroWriter(library_id="123", api_key="abc")
+    with pytest.raises(ZoteroWriteError, match="not found"):
+        writer.rename_collection("NONEXIST", "New Name")

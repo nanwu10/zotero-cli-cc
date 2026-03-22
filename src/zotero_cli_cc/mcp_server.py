@@ -304,6 +304,24 @@ def _handle_collection_create(name: str, parent_key: str | None) -> dict:
     return {"collection_key": collection_key}
 
 
+def _handle_collection_move(item_key: str, collection_key: str) -> dict:
+    writer = _get_writer()
+    writer.move_to_collection(item_key, collection_key)
+    return {"item_key": item_key, "collection_key": collection_key}
+
+
+def _handle_collection_delete(collection_key: str) -> dict:
+    writer = _get_writer()
+    writer.delete_collection(collection_key)
+    return {"deleted": True, "collection_key": collection_key}
+
+
+def _handle_collection_rename(collection_key: str, new_name: str) -> dict:
+    writer = _get_writer()
+    writer.rename_collection(collection_key, new_name)
+    return {"collection_key": collection_key, "new_name": new_name}
+
+
 # ---------------------------------------------------------------------------
 # MCP tool definitions
 # ---------------------------------------------------------------------------
@@ -489,3 +507,35 @@ def collection_create(name: str, parent_key: str | None = None) -> dict:
         parent_key: Optional parent collection key for creating a subcollection.
     """
     return _handle_collection_create(name, parent_key)
+
+
+@mcp.tool()
+def collection_move(item_key: str, collection_key: str) -> dict:
+    """Move an item to a collection. Requires API credentials.
+
+    Args:
+        item_key: The Zotero item key.
+        collection_key: The target collection key.
+    """
+    return _handle_collection_move(item_key, collection_key)
+
+
+@mcp.tool()
+def collection_delete(collection_key: str) -> dict:
+    """Delete a collection from the Zotero library. Requires API credentials.
+
+    Args:
+        collection_key: The collection key to delete.
+    """
+    return _handle_collection_delete(collection_key)
+
+
+@mcp.tool()
+def collection_rename(collection_key: str, new_name: str) -> dict:
+    """Rename a collection in the Zotero library. Requires API credentials.
+
+    Args:
+        collection_key: The collection key to rename.
+        new_name: The new name for the collection.
+    """
+    return _handle_collection_rename(collection_key, new_name)
