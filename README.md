@@ -237,12 +237,11 @@ zot --version                              # 查看版本
 → Claude 自动运行: zot export ABC123
 ```
 
-建议在 `~/.claude/CLAUDE.md` 中添加：
+安装 zotero-cli skill 后，Claude Code 会自动识别文献相关请求并调用 `zot`：
 
-```markdown
-### Zotero CLI
-- 使用 `zot` 命令操作 Zotero（搜索、阅读、笔记、导出、添加、删除）
-- 处理结果时使用 `--json` 标志
+```bash
+# 安装 skill（将 skill/zotero-cli/ 复制到 ~/.claude/skills/）
+cp -r skill/zotero-cli ~/.claude/skills/
 ```
 
 ## 环境变量

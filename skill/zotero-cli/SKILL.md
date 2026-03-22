@@ -91,6 +91,16 @@ zot --json collection items COLLECTIONKEY
 
 # Create collection
 zot collection create "New Project"
+
+# Move item to collection
+zot collection move ITEMKEY COLLECTIONKEY
+
+# Rename / delete collection
+zot collection rename COLLECTIONKEY "New Name"
+zot collection delete COLLECTIONKEY
+
+# AI-powered batch reorganize (from JSON plan)
+zot collection reorganize plan.json
 ```
 
 ### PDF & Summarization
@@ -104,6 +114,9 @@ zot pdf ITEMKEY --pages 1-5
 
 # Structured summary optimized for AI consumption
 zot --json summarize ITEMKEY
+
+# Batch export all items for AI classification
+zot summarize-all
 ```
 
 ### Configuration
@@ -189,7 +202,30 @@ zot tag NEWKEY --add "single-cell"
 zot tag NEWKEY --add "methods"
 ```
 
-### Pattern 5: Batch Search with Token Efficiency
+### Pattern 5: AI-Powered Library Reorganization
+
+```bash
+# Step 1: Export all abstracts
+zot summarize-all > abstracts.json
+
+# Step 2: AI analyzes and generates a classification plan
+# (Claude reads abstracts.json, creates plan.json)
+
+# Step 3: Execute the plan
+zot collection reorganize plan.json
+```
+
+Plan file format:
+```json
+{
+  "collections": [
+    {"name": "Machine Learning", "items": ["KEY1", "KEY2"]},
+    {"name": "Reinforcement Learning", "parent": "Machine Learning", "items": ["KEY3"]}
+  ]
+}
+```
+
+### Pattern 6: Batch Search with Token Efficiency
 
 ```bash
 # First pass: minimal detail to scan many results

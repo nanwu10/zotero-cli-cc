@@ -229,12 +229,11 @@ Export BibTeX for this paper
 → Claude runs: zot export ABC123
 ```
 
-Add to `~/.claude/CLAUDE.md`:
+Install the zotero-cli skill so Claude Code automatically recognizes literature-related requests:
 
-```markdown
-### Zotero CLI
-- Use `zot` command for Zotero operations (search, read, notes, export, add, delete)
-- Use `--json` flag when processing results programmatically
+```bash
+# Install skill (copy skill/zotero-cli/ to ~/.claude/skills/)
+cp -r skill/zotero-cli ~/.claude/skills/
 ```
 
 ## Environment Variables
