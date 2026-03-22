@@ -69,6 +69,8 @@ MCP mode provides 17 tools covering search, reading, PDF extraction, note manage
 
 ### Search & Browse
 
+> **How search works:** `zot search` matches keywords across four layers: ① titles & abstracts ② author names ③ tags ④ PDF fulltext index. The PDF fulltext search relies on Zotero's built-in `fulltextWords` word-level index — it only supports simple `LIKE` pattern matching with no relevance ranking, phrase matching, or semantic understanding. For advanced semantic search (vector search, BM25, cross-language matching), use [zotero-rag-cli (rak)](https://github.com/Agents365-ai/zotero-rag-cli).
+
 ```bash
 # Search across title, author, tags, fulltext
 zot search "transformer attention"
@@ -163,7 +165,7 @@ zot pdf ABC123 --pages 1-5         # Extract specific pages
 | **PDF Full-Text** | **✅** | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
 | **AI Coding Assistant** | **✅ Claude Code** | Partial | ❌ | ❌ | Claude/ChatGPT | Claude/Cursor | Claude/Cursor |
 | **Terminal CLI** | **✅** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **MCP Protocol** | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| **MCP Protocol** | **✅** | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
 | **JSON Output** | ✅ | ✅ | ❌ | ❌ | N/A | N/A | N/A |
 | **Note Management** | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
 | **Collections** | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ |
