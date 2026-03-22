@@ -13,6 +13,28 @@
 
 **无需启动 Zotero 桌面端即可检索和阅读文献。**
 
+## 在 Claude Code 中使用
+
+在任何 Claude Code 会话中，直接用自然语言请求：
+
+```
+帮我搜索 Zotero 中关于 single cell 的论文
+→ Claude 自动运行: zot --json search "single cell"
+
+查看这篇论文的详情
+→ Claude 自动运行: zot --json read ABC123
+
+导出这篇论文的 BibTeX
+→ Claude 自动运行: zot export ABC123
+```
+
+安装 zotero-cli skill 后，Claude Code 会自动识别文献相关请求并调用 `zot`：
+
+```bash
+# 安装 skill（将 skill/zotero-cli/ 复制到 ~/.claude/skills/）
+cp -r skill/zotero-cli ~/.claude/skills/
+```
+
 ## 安装
 
 ```bash
@@ -204,28 +226,6 @@ graph TD
     R --> D["SQLite<br>~/Zotero/zotero.sqlite"]
     W --> E["Zotero Web API<br>(远程)"]
     D --> F["~/Zotero/storage/*.pdf"]
-```
-
-## 在 Claude Code 中使用
-
-在任何 Claude Code 会话中，直接用自然语言请求：
-
-```
-帮我搜索 Zotero 中关于 single cell 的论文
-→ Claude 自动运行: zot --json search "single cell"
-
-查看这篇论文的详情
-→ Claude 自动运行: zot --json read ABC123
-
-导出这篇论文的 BibTeX
-→ Claude 自动运行: zot export ABC123
-```
-
-安装 zotero-cli skill 后，Claude Code 会自动识别文献相关请求并调用 `zot`：
-
-```bash
-# 安装 skill（将 skill/zotero-cli/ 复制到 ~/.claude/skills/）
-cp -r skill/zotero-cli ~/.claude/skills/
 ```
 
 ## 环境变量
