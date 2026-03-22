@@ -18,6 +18,7 @@ from zotero_cli_cc.commands.collection import collection_group
 from zotero_cli_cc.commands.summarize import summarize_cmd
 from zotero_cli_cc.commands.pdf import pdf_cmd
 from zotero_cli_cc.commands.relate import relate_cmd
+from zotero_cli_cc.commands.mcp import mcp_group
 
 
 @click.group()
@@ -53,3 +54,4 @@ main.add_command(collection_group, "collection")
 main.add_command(summarize_cmd, "summarize")
 main.add_command(pdf_cmd, "pdf")
 main.add_command(relate_cmd, "relate")
+main.add_command(mcp_group, "mcp")
