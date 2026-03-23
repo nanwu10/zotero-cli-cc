@@ -1,7 +1,7 @@
 ---
 name: zotero-cli
 description: "Use when user mentions papers, references, citations, Zotero, literature, bibliography, or needs to search/read/export academic papers. Routes between zot (fast local SQLite) and rak (semantic/hybrid search) automatically."
-version: 0.2.0
+version: 0.3.0
 ---
 
 # Zotero CLI Skill for Claude Code
@@ -22,7 +22,8 @@ Two complementary tools for Zotero:
 | Search by title/author/tag | `zot --json search "transformer"` | Fast metadata match |
 | **Search paper content / fulltext** | **`rak --json search "query" --hybrid`** | **zot fulltext is word-level LIKE only; rak has BM25 + vector** |
 | Semantic search ("papers about cell fate") | `rak --json search "cell fate" --hybrid` | Needs semantic understanding |
-| Similarity search ("papers like this one") | `rak --json search "..." --hybrid` | Needs embeddings |
+| Similarity search ("papers like this one") | `rak --json similar KEY` | Dedicated command, uses embeddings |
+| Keyword-only search (no model needed) | `rak --json search "query" --bm25` | Fast, no embedding model required |
 | Read/view a paper | `zot --json read KEY` | Direct lookup |
 | Export citation | `zot export KEY` | Local data |
 | Add/delete/tag/note | `zot ...` | All write ops |
@@ -123,6 +124,7 @@ zot config cache clear
 | `--detail full` | Include extra fields |
 | `--no-interaction` | Suppress prompts (for automation) |
 | `--profile NAME` | Use a specific config profile |
+| `--verbose` | Verbose/debug output |
 
 ---
 
@@ -144,8 +146,14 @@ rak index
 # Hybrid search (recommended — vector + BM25)
 rak --json search "cell fate determination" --hybrid
 
+# Pure keyword search (no embedding model needed)
+rak --json search "CRISPR knockout" --bm25
+
 # With filters
 rak --json search "CRISPR" --hybrid --limit 5 --collection "Methods" --tag "review"
+
+# Find similar papers by item key
+rak --json similar K853PGUG --limit 5
 ```
 
 ### Q&A (RAG)
@@ -170,6 +178,7 @@ rak export "CRISPR" --format bibtex --output refs.bib
 ```bash
 rak index              # Incremental index (new items only)
 rak index --full       # Full rebuild
+rak reindex            # Clear + rebuild (useful after changing pdf_provider)
 rak status             # Show index status
 rak clear --yes        # Delete all indexes
 ```
@@ -206,11 +215,12 @@ zot --json pdf KEY1 --pages 1-5
 
 ```bash
 # Step 1: Export all abstracts
-zot summarize-all > abstracts.json
+zot --json summarize-all > abstracts.json
 
-# Step 2: AI generates classification plan
-# Step 3: Execute
-zot collection reorganize plan.json
+# Step 2: AI analyzes and generates classification plan
+# Step 3: Create collections and move items
+zot collection create "Category A"
+zot collection move ITEMKEY COLLECTIONKEY
 ```
 
 ### Pattern 4: Q&A Over Library
