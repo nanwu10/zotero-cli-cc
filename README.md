@@ -66,7 +66,46 @@ pip install zotero-cli-cc
 zot config init
 ```
 
-读操作开箱即用，只要 Zotero 数据在默认目录（`~/Zotero`）。
+### 数据目录
+
+读操作开箱即用，`zot` 会自动检测 Zotero 数据目录：
+
+| 平台 | 检测顺序 |
+|------|----------|
+| **Windows** | 注册表 `HKCU\Software\Zotero\Zotero\dataDir` → `%APPDATA%\Zotero` → `%LOCALAPPDATA%\Zotero` |
+| **macOS / Linux** | `~/Zotero` |
+
+如果 Zotero 数据不在默认目录，可以通过以下方式指定：
+
+```bash
+# 方式一：配置文件（推荐）
+zot config init --data-dir "D:\MyZotero"
+
+# 方式二：环境变量
+export ZOT_DATA_DIR="/path/to/zotero/data"
+
+# 方式三：手动编辑配置文件
+# 编辑 ~/.config/zot/config.toml (Linux/macOS)
+# 或 %APPDATA%\zot\config.toml (Windows)
+```
+
+配置文件示例：
+
+```toml
+[zotero]
+data_dir = "D:\\MyZotero"
+library_id = "12345"
+api_key = "xxx"
+
+[output]
+default_format = "table"
+limit = 50
+
+[export]
+default_style = "bibtex"
+```
+
+### API 凭证
 
 写操作需要 API Key，在 https://www.zotero.org/settings/keys 获取。
 

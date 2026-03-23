@@ -19,6 +19,30 @@ CONFIG_DIR = Path(user_config_dir("zot"))
 CONFIG_FILE = CONFIG_DIR / "config.toml"
 
 
+def _detect_zotero_data_dir_from_registry() -> Path | None:
+    """Detect Zotero data directory from Windows Registry.
+
+    Zotero stores custom data directory in:
+    HKEY_CURRENT_USER\\Software\\Zotero\\Zotero\\dataDir
+
+    Returns None if not found or not on Windows.
+    """
+    if sys.platform != "win32":
+        return None
+
+    try:
+        import winreg
+
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Zotero\Zotero") as key:
+            data_dir, _ = winreg.QueryValueEx(key, "dataDir")
+            if data_dir and Path(data_dir).exists():
+                return Path(data_dir)
+    except (OSError, FileNotFoundError, ImportError):
+        pass
+
+    return None
+
+
 @dataclass
 class AppConfig:
     data_dir: str = ""
@@ -113,8 +137,22 @@ def save_config(config: AppConfig, path: Path | None = None) -> None:
 def detect_zotero_data_dir(config: AppConfig) -> Path:
     if config.data_dir:
         return Path(config.data_dir).expanduser()
+
     if sys.platform == "win32":
-        return Path(os.environ.get("APPDATA", "")) / "Zotero"
+        registry_dir = _detect_zotero_data_dir_from_registry()
+        if registry_dir:
+            return registry_dir
+
+        appdata = Path(os.environ.get("APPDATA", ""))
+        if appdata and (appdata / "Zotero").exists():
+            return appdata / "Zotero"
+
+        local_appdata = Path(os.environ.get("LOCALAPPDATA", ""))
+        if local_appdata and (local_appdata / "Zotero").exists():
+            return local_appdata / "Zotero"
+
+        return appdata / "Zotero"
+
     return Path.home() / "Zotero"
 
 

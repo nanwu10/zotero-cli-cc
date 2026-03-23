@@ -24,7 +24,7 @@ def test_config_init(tmp_path):
     result = runner.invoke(
         main,
         ["config", "init", "--config-path", str(config_path)],
-        input="12345\nmy-api-key\n",
+        input="12345\nmy-api-key\n\n",
     )
     assert result.exit_code == 0
     assert config_path.exists()

@@ -5,7 +5,15 @@ from pathlib import Path
 
 import click
 
-from zotero_cli_cc.config import CONFIG_FILE, AppConfig, get_default_profile, list_profiles, load_config, save_config
+from zotero_cli_cc.config import (
+    CONFIG_FILE,
+    AppConfig,
+    detect_zotero_data_dir,
+    get_default_profile,
+    list_profiles,
+    load_config,
+    save_config,
+)
 
 
 @click.group("config")
@@ -16,37 +24,45 @@ def config_group() -> None:
 
 @config_group.command("init")
 @click.option("--config-path", type=click.Path(), default=None, help="Config file path")
+@click.option("--data-dir", "data_dir", default=None, help="Zotero data directory (auto-detected if not set)")
 @click.option("--library-id", default=None, help="Zotero library ID")
 @click.option("--api-key", default=None, help="Zotero API key")
 @click.pass_context
-def config_init(ctx: click.Context, config_path: str | None, library_id: str | None, api_key: str | None) -> None:
+def config_init(
+    ctx: click.Context,
+    config_path: str | None,
+    data_dir: str | None,
+    library_id: str | None,
+    api_key: str | None,
+) -> None:
     """Initialize configuration interactively."""
     path = Path(config_path) if config_path else CONFIG_FILE
     no_interaction = ctx.obj.get("no_interaction", False) if ctx.obj else False
     json_out = ctx.obj.get("json", False) if ctx.obj else False
-    if no_interaction:
-        if not library_id or not api_key:
-            from zotero_cli_cc.formatter import format_error
-            from zotero_cli_cc.models import ErrorInfo
 
-            click.echo(
-                format_error(
-                    ErrorInfo(
-                        message="--library-id and --api-key required with --no-interaction",
-                        context="config init",
-                        hint="Provide --library-id and --api-key, or run without --no-interaction",
-                    ),
-                    output_json=json_out,
-                )
-            )
-            ctx.exit(1)
-            return
+    detected_dir = detect_zotero_data_dir(AppConfig())
+
+    if no_interaction:
+        library_id = library_id or ""
+        api_key = api_key or ""
+        data_dir = data_dir or str(detected_dir)
     else:
-        library_id = library_id or click.prompt("Zotero library ID")
-        api_key = api_key or click.prompt("Zotero API key")
-    cfg = AppConfig(library_id=library_id, api_key=api_key)
+        library_id = library_id or click.prompt("Zotero library ID", default="")
+        api_key = api_key or click.prompt("Zotero API key", default="")
+        if data_dir is None:
+            data_dir = click.prompt(
+                "Zotero data directory",
+                default=str(detected_dir),
+            )
+
+    cfg = AppConfig(
+        data_dir=data_dir or "",
+        library_id=library_id or "",
+        api_key=api_key or "",
+    )
     save_config(cfg, path)
     click.echo(f"Configuration saved to {path}")
+    click.echo(f"  Data directory: {cfg.data_dir or '(auto-detect)'}")
 
 
 @config_group.command("show")

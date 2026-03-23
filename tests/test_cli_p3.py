@@ -17,11 +17,13 @@ def test_delete_no_interaction_skips_prompt():
     assert "Cancelled" not in result.output
 
 
-def test_config_init_no_interaction_requires_options(tmp_path):
-    """--no-interaction + config init without args should error."""
+def test_config_init_no_interaction_succeeds_with_auto_detect(tmp_path):
+    """--no-interaction + config init without args should succeed with auto-detected values."""
     runner = CliRunner()
     result = runner.invoke(main, ["--no-interaction", "config", "init", "--config-path", str(tmp_path / "config.toml")])
-    assert "required" in result.output.lower() or "error" in result.output.lower()
+    assert result.exit_code == 0
+    assert "saved" in result.output.lower()
+    assert (tmp_path / "config.toml").exists()
 
 
 def test_config_init_no_interaction_with_options(tmp_path):
