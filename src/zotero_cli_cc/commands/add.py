@@ -85,7 +85,9 @@ def _add_from_file(file_path: Path, library_id: str, api_key: str, json_out: boo
     if not lines:
         click.echo(
             format_error(
-                ErrorInfo(message="File is empty or has no valid entries", context="add", hint="One DOI or URL per line"),
+                ErrorInfo(
+                    message="File is empty or has no valid entries", context="add", hint="One DOI or URL per line"
+                ),
                 output_json=json_out,
             )
         )
