@@ -26,6 +26,8 @@ Two complementary tools for Zotero:
 | Keyword-only search (no model needed) | `rak --json search "query" --bm25` | Fast, no embedding model required |
 | Read/view a paper | `zot --json read KEY` | Direct lookup |
 | Export citation | `zot export KEY` | Local data |
+| Formatted citation to clipboard | `zot cite KEY --style apa` | APA/Nature/Vancouver |
+| Batch import DOIs/URLs | `zot add --from-file file.txt` | One per line |
 | Add/delete/tag/note | `zot ...` | All write ops |
 | PDF full text extraction | `zot --json pdf KEY` | Local file access |
 | Library stats | `zot --json stats` | Local aggregation |
@@ -65,7 +67,13 @@ zot tag ITEMKEY --remove "to-read"
 ```bash
 zot export ITEMKEY                    # BibTeX
 zot export ITEMKEY --format csl-json  # CSL-JSON
+zot export ITEMKEY --format ris       # RIS
 zot export ITEMKEY --format json      # Raw JSON
+
+# Formatted citation (copies to clipboard)
+zot cite ITEMKEY                      # APA (default)
+zot cite ITEMKEY --style nature       # Nature
+zot cite ITEMKEY --style vancouver    # Vancouver
 ```
 
 ### Item Management (Write Ops)
@@ -73,6 +81,7 @@ zot export ITEMKEY --format json      # Raw JSON
 ```bash
 zot add --doi "10.1038/s41586-023-06139-9"
 zot add --url "https://arxiv.org/abs/2301.00001"
+zot add --from-file dois.txt              # Batch import (one DOI/URL per line)
 zot --no-interaction delete ITEMKEY
 ```
 

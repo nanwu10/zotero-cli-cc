@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 from click.testing import CliRunner
 
@@ -90,3 +91,76 @@ class TestExport:
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert "title" in data
+
+
+class TestCiteCommand:
+    def test_cite_apa_default(self, test_db_path):
+        result = _invoke(["cite", "ATTN001", "--no-copy"], test_db_path)
+        assert result.exit_code == 0
+        assert "Vaswani" in result.output
+        assert "2017" in result.output
+        assert "Attention Is All You Need" in result.output
+
+    def test_cite_nature(self, test_db_path):
+        result = _invoke(["cite", "ATTN001", "--style", "nature", "--no-copy"], test_db_path)
+        assert result.exit_code == 0
+        assert "Vaswani" in result.output
+        assert "10.5555/attention" in result.output
+
+    def test_cite_vancouver(self, test_db_path):
+        result = _invoke(["cite", "ATTN001", "--style", "vancouver", "--no-copy"], test_db_path)
+        assert result.exit_code == 0
+        assert "Vaswani A" in result.output
+        assert "doi:10.5555/attention" in result.output
+
+    def test_cite_not_found(self, test_db_path):
+        result = _invoke(["cite", "NONEXIST", "--no-copy"], test_db_path)
+        assert result.exit_code == 0
+        assert "not found" in result.output
+
+    def test_cite_copies_to_clipboard(self, test_db_path):
+        with patch("zotero_cli_cc.commands.cite._copy_to_clipboard", return_value=True) as mock_copy:
+            result = _invoke(["cite", "ATTN001"], test_db_path)
+            assert result.exit_code == 0
+            assert "copied to clipboard" in result.output
+            mock_copy.assert_called_once()
+
+
+class TestAddFromFile:
+    def test_add_from_file_no_creds(self, test_db_path, tmp_path):
+        doi_file = tmp_path / "dois.txt"
+        doi_file.write_text("10.1038/s41586-023-06139-9\n")
+        runner = CliRunner()
+        # Use a non-existent profile dir to ensure no credentials are found
+        env = {
+            "ZOT_DATA_DIR": str(test_db_path.parent),
+            "ZOT_LIBRARY_ID": "",
+            "ZOT_API_KEY": "",
+        }
+        result = runner.invoke(main, ["add", "--from-file", str(doi_file)], env=env)
+        assert result.exit_code == 0
+        assert "credentials not configured" in result.output.lower()
+
+    def test_add_from_file_empty(self, test_db_path, tmp_path):
+        doi_file = tmp_path / "empty.txt"
+        doi_file.write_text("# just a comment\n\n")
+        runner = CliRunner()
+        env = {
+            "ZOT_DATA_DIR": str(test_db_path.parent),
+            "ZOT_LIBRARY_ID": "12345",
+            "ZOT_API_KEY": "fake-key",
+        }
+        result = runner.invoke(main, ["add", "--from-file", str(doi_file)], env=env)
+        assert result.exit_code == 0
+        assert "empty" in result.output.lower()
+
+    def test_add_requires_input(self, test_db_path):
+        runner = CliRunner()
+        env = {
+            "ZOT_DATA_DIR": str(test_db_path.parent),
+            "ZOT_LIBRARY_ID": "12345",
+            "ZOT_API_KEY": "fake-key",
+        }
+        result = runner.invoke(main, ["add"], env=env)
+        assert result.exit_code == 0
+        assert "--from-file" in result.output

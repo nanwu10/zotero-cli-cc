@@ -144,6 +144,11 @@ zot export ABC123                    # BibTeX
 zot export ABC123 --format csl-json  # CSL-JSON
 zot export ABC123 --format ris       # RIS
 zot export ABC123 --format json      # JSON
+
+# 格式化引用并复制到剪贴板
+zot cite ABC123                      # APA（默认）
+zot cite ABC123 --style nature       # Nature
+zot cite ABC123 --style vancouver    # Vancouver
 ```
 
 ### 文献管理
@@ -151,6 +156,7 @@ zot export ABC123 --format json      # JSON
 ```bash
 zot add --doi "10.1038/s41586-023-06139-9"    # 通过 DOI 添加
 zot add --url "https://arxiv.org/abs/2301.00001"  # 通过 URL 添加
+zot add --from-file dois.txt                     # 从文件批量导入
 zot delete ABC123 --yes                        # 删除（移入回收站）
 ```
 
@@ -276,8 +282,8 @@ graph TD
 
 ### Features
 
-- [ ] `zot cite`：格式化引用并复制到剪贴板（APA、Nature、Vancouver 等样式）
-- [ ] 批量操作：从文件批量导入（`zot add --from-file dois.txt`）
+- [x] `zot cite`：格式化引用并复制到剪贴板（APA、Nature、Vancouver）
+- [x] 批量操作：从文件批量导入（`zot add --from-file dois.txt`）
 - [x] `zot export`：增加 RIS 格式支持（BibTeX、CSL-JSON、RIS、JSON）
 
 ### Polish

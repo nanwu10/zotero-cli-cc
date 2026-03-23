@@ -6,6 +6,7 @@ import click
 
 from zotero_cli_cc import __version__
 from zotero_cli_cc.commands.add import add_cmd
+from zotero_cli_cc.commands.cite import cite_cmd
 from zotero_cli_cc.commands.collection import collection_group
 from zotero_cli_cc.commands.completions import completions_cmd
 from zotero_cli_cc.commands.config import config_group
@@ -79,4 +80,5 @@ main.add_command(relate_cmd, "relate")
 main.add_command(mcp_group, "mcp")
 main.add_command(stats_cmd, "stats")
 main.add_command(open_cmd, "open")
+main.add_command(cite_cmd, "cite")
 main.add_command(completions_cmd, "completions")

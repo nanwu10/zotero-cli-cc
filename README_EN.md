@@ -118,16 +118,24 @@ zot tag ABC123 --remove "to-read"
 ### Citation Export
 
 ```bash
-zot export ABC123                  # BibTeX
-zot export ABC123 --format json    # JSON
+zot export ABC123                    # BibTeX
+zot export ABC123 --format csl-json  # CSL-JSON
+zot export ABC123 --format ris       # RIS
+zot export ABC123 --format json      # JSON
+
+# Format citation and copy to clipboard
+zot cite ABC123                      # APA (default)
+zot cite ABC123 --style nature       # Nature
+zot cite ABC123 --style vancouver    # Vancouver
 ```
 
 ### Item Management
 
 ```bash
-zot add --doi "10.1038/s41586-023-06139-9"    # Add by DOI
+zot add --doi "10.1038/s41586-023-06139-9"       # Add by DOI
 zot add --url "https://arxiv.org/abs/2301.00001"  # Add by URL
-zot delete ABC123 --yes                        # Delete (move to trash)
+zot add --from-file dois.txt                      # Batch import from file
+zot delete ABC123 --yes                           # Delete (move to trash)
 ```
 
 ### Collections
@@ -274,8 +282,8 @@ cp -r skill/zotero-cli-cc ~/.claude/skills/
 
 ### Features
 
-- [ ] `zot cite`: copy formatted citation to clipboard (APA, Nature, Vancouver, etc.)
-- [ ] Bulk operations from file input (`zot add --from-file dois.txt`)
+- [x] `zot cite`: copy formatted citation to clipboard (APA, Nature, Vancouver)
+- [x] Bulk operations from file input (`zot add --from-file dois.txt`)
 - [x] `zot export`: add RIS format support (BibTeX, CSL-JSON, RIS, JSON)
 
 ### Polish
