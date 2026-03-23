@@ -38,7 +38,6 @@ def config_init(
     """Initialize configuration interactively."""
     path = Path(config_path) if config_path else CONFIG_FILE
     no_interaction = ctx.obj.get("no_interaction", False) if ctx.obj else False
-    json_out = ctx.obj.get("json", False) if ctx.obj else False
 
     detected_dir = detect_zotero_data_dir(AppConfig())
 
