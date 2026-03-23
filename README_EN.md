@@ -4,6 +4,13 @@
   <img src="asserts/banner_official.png" alt="zotero-cli-cc banner" width="720">
 </p>
 
+<p align="center">
+  <a href="https://pypi.org/project/zotero-cli-cc/"><img src="https://img.shields.io/pypi/v/zotero-cli-cc?color=blue" alt="PyPI version"></a>
+  <a href="https://github.com/Agents365-ai/zotero-cli-cc/actions/workflows/ci.yml"><img src="https://github.com/Agents365-ai/zotero-cli-cc/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://pypi.org/project/zotero-cli-cc/"><img src="https://img.shields.io/pypi/pyversions/zotero-cli-cc" alt="Python versions"></a>
+  <a href="https://creativecommons.org/licenses/by-nc/4.0/"><img src="https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey" alt="License"></a>
+</p>
+
 [中文](README.md)
 
 ## Introduction
@@ -22,6 +29,9 @@
 ```bash
 # Recommended
 uv tool install zotero-cli-cc
+
+# Or
+pipx install zotero-cli-cc
 
 # Or
 pip install zotero-cli-cc
@@ -157,6 +167,21 @@ zot pdf ABC123 --pages 1-5         # Extract specific pages
 | `--profile NAME` | Use a specific config profile |
 | `--version` | Show version |
 
+### Shell Completions
+
+```bash
+# Zsh (recommended)
+zot completions zsh >> ~/.zshrc
+
+# Bash
+zot completions bash >> ~/.bashrc
+
+# Fish
+zot completions fish > ~/.config/fish/completions/zot.fish
+```
+
+Restart your terminal or `source` the config file to enable tab completions.
+
 ## Comparison with Similar Tools
 
 | Feature | **zotero-cli-cc** | [pyzotero-cli](https://github.com/chriscarrollsmith/pyzotero-cli) | [zotero-cli](https://github.com/jbaiter/zotero-cli) | [zotero-cli-tool](https://github.com/dhondta/zotero-cli) | [zotero-mcp](https://github.com/54yyyu/zotero-mcp) | [cookjohn/zotero-mcp](https://github.com/cookjohn/zotero-mcp) | [ZoteroBridge](https://github.com/Combjellyshen/ZoteroBridge) |
@@ -246,6 +271,30 @@ cp -r skill/zotero-cli-cc ~/.claude/skills/
 - [x] Improve HTML-to-Markdown: support lists, links, tables, and other common Zotero note formats (v0.1.2: uses markdownify)
 - [x] `summarize-all` pagination: add offset/cursor pagination for large libraries (v0.1.2: `--offset` flag)
 - [x] `--dry-run` for destructive ops: add preview mode to `delete`, `collection delete`, and `tag` (v0.1.2)
+
+### Features
+
+- [ ] `zot cite`: copy formatted citation to clipboard (APA, Nature, Vancouver, etc.)
+- [ ] Bulk operations from file input (`zot add --from-file dois.txt`)
+- [ ] `zot export`: add RIS format support (BibTeX & CSL-JSON already exist)
+
+### Polish
+
+- [ ] GitHub Issues / Discussions setup for user feedback
+- [x] Improve `--help` text with usage examples
+- [x] Shell completion install instructions in README (zsh/bash/fish)
+
+### Distribution
+
+- [x] `pipx` install instructions
+- [ ] Homebrew formula
+- [x] GitHub Releases with changelogs (v0.1.1, v0.1.2)
+- [x] README badges: PyPI version, CI status, Python versions, License
+
+### MCP Server
+
+- [ ] Expand MCP tools: collection management, export, advanced search
+- [ ] MCP server documentation / integration guide
 
 ---
 

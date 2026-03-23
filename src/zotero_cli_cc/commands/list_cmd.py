@@ -11,7 +11,15 @@ from zotero_cli_cc.formatter import format_items
 @click.option("--collection", default=None, help="Filter by collection name")
 @click.pass_context
 def list_cmd(ctx: click.Context, collection: str | None) -> None:
-    """List items in the Zotero library."""
+    """List items in the Zotero library.
+
+    \b
+    Examples:
+      zot list
+      zot list --collection "Machine Learning"
+      zot --limit 10 list
+      zot --json list --collection "NLP"
+    """
     cfg = load_config(profile=ctx.obj.get("profile"))
     data_dir = get_data_dir(cfg)
     db_path = data_dir / "zotero.sqlite"

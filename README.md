@@ -4,6 +4,13 @@
   <img src="asserts/banner_official.png" alt="zotero-cli-cc banner" width="720">
 </p>
 
+<p align="center">
+  <a href="https://pypi.org/project/zotero-cli-cc/"><img src="https://img.shields.io/pypi/v/zotero-cli-cc?color=blue" alt="PyPI version"></a>
+  <a href="https://github.com/Agents365-ai/zotero-cli-cc/actions/workflows/ci.yml"><img src="https://github.com/Agents365-ai/zotero-cli-cc/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://pypi.org/project/zotero-cli-cc/"><img src="https://img.shields.io/pypi/pyversions/zotero-cli-cc" alt="Python versions"></a>
+  <a href="https://creativecommons.org/licenses/by-nc/4.0/"><img src="https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey" alt="License"></a>
+</p>
+
 [English](README_EN.md)
 
 ## 简介
@@ -44,6 +51,9 @@ cp -r skill/zotero-cli-cc ~/.claude/skills/
 ```bash
 # 推荐
 uv tool install zotero-cli-cc
+
+# 或者
+pipx install zotero-cli-cc
 
 # 或者
 pip install zotero-cli-cc
@@ -179,6 +189,21 @@ zot --profile lab search "CRISPR"          # 使用指定配置档案
 zot --version                              # 查看版本
 ```
 
+### Shell 补全
+
+```bash
+# Zsh（推荐）
+zot completions zsh >> ~/.zshrc
+
+# Bash
+zot completions bash >> ~/.bashrc
+
+# Fish
+zot completions fish > ~/.config/fish/completions/zot.fish
+```
+
+添加后重启终端或 `source` 配置文件即可使用 Tab 补全。
+
 ## 同类工具对比
 
 | 特性 | **zotero-cli-cc** | [pyzotero-cli](https://github.com/chriscarrollsmith/pyzotero-cli) | [zotero-cli](https://github.com/jbaiter/zotero-cli) | [zotero-cli-tool](https://github.com/dhondta/zotero-cli) | [zotero-mcp](https://github.com/54yyyu/zotero-mcp) | [cookjohn/zotero-mcp](https://github.com/cookjohn/zotero-mcp) | [ZoteroBridge](https://github.com/Combjellyshen/ZoteroBridge) |
@@ -246,6 +271,30 @@ graph TD
 - [x] 改进 HTML 转 Markdown：支持列表、链接、表格等 Zotero 笔记常用格式（v0.1.2：使用 markdownify）
 - [x] `summarize-all` 分页：为大型文献库添加 offset/cursor 分页支持（v0.1.2：`--offset` 参数）
 - [x] 危险操作 `--dry-run`：为 `delete`、`collection delete`、`tag` 添加预览模式（v0.1.2）
+
+### Features
+
+- [ ] `zot cite`：格式化引用并复制到剪贴板（APA、Nature、Vancouver 等样式）
+- [ ] 批量操作：从文件批量导入（`zot add --from-file dois.txt`）
+- [ ] `zot export`：增加 RIS 格式支持（BibTeX 和 CSL-JSON 已支持）
+
+### Polish
+
+- [ ] GitHub Issues / Discussions：开放用户反馈渠道
+- [x] 改进 `--help` 文本：添加使用示例
+- [x] Shell 补全安装说明：在 README 中添加 zsh/bash/fish 安装指引
+
+### Distribution
+
+- [x] `pipx` 安装说明
+- [ ] Homebrew formula
+- [x] GitHub Releases：附带 changelog（v0.1.1, v0.1.2）
+- [x] README 徽章：PyPI 版本、CI 状态、Python 版本、License
+
+### MCP Server
+
+- [ ] 扩展 MCP 工具：collection 管理、导出、高级搜索
+- [ ] MCP 服务器文档 / 集成指南
 
 ---
 

@@ -26,7 +26,13 @@ def _open_path(path: str) -> None:
 @click.option("--url", "open_url", is_flag=True, help="Open the item URL in browser instead of PDF")
 @click.pass_context
 def open_cmd(ctx: click.Context, key: str, open_url: bool) -> None:
-    """Open the PDF or URL of a Zotero item."""
+    """Open the PDF or URL of a Zotero item in the default app.
+
+    \b
+    Examples:
+      zot open ABC123          Open PDF in default viewer
+      zot open ABC123 --url    Open DOI/URL in browser
+    """
     cfg = load_config(profile=ctx.obj.get("profile"))
     data_dir = get_data_dir(cfg)
     db_path = data_dir / "zotero.sqlite"

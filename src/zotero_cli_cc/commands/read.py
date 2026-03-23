@@ -12,7 +12,14 @@ from zotero_cli_cc.models import ErrorInfo
 @click.argument("key")
 @click.pass_context
 def read_cmd(ctx: click.Context, key: str) -> None:
-    """View item details."""
+    """View item details (metadata, abstract, notes).
+
+    \b
+    Examples:
+      zot read ABC123
+      zot --json read ABC123
+      zot --detail full read ABC123
+    """
     cfg = load_config(profile=ctx.obj.get("profile"))
     data_dir = get_data_dir(cfg)
     db_path = data_dir / "zotero.sqlite"

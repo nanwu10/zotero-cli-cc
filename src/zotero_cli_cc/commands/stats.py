@@ -11,7 +11,13 @@ from zotero_cli_cc.core.reader import ZoteroReader
 @click.command("stats")
 @click.pass_context
 def stats_cmd(ctx: click.Context) -> None:
-    """Show library statistics."""
+    """Show library statistics (items, PDFs, notes, types, collections, tags).
+
+    \b
+    Examples:
+      zot stats
+      zot --json stats
+    """
     cfg = load_config(profile=ctx.obj.get("profile"))
     data_dir = get_data_dir(cfg)
     db_path = data_dir / "zotero.sqlite"

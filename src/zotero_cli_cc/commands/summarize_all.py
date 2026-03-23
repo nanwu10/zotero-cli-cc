@@ -14,7 +14,14 @@ from zotero_cli_cc.core.reader import ZoteroReader
 @click.option("--offset", default=0, help="Skip first N items (for pagination)")
 @click.pass_context
 def summarize_all_cmd(ctx: click.Context, offset: int) -> None:
-    """Export all items with key, title, and abstract for AI classification."""
+    """Export all items with key, title, and abstract for AI classification.
+
+    \b
+    Examples:
+      zot summarize-all                   Export all items
+      zot --limit 100 summarize-all       First 100 items
+      zot summarize-all --offset 100      Skip first 100 (pagination)
+    """
     cfg = load_config(profile=ctx.obj.get("profile"))
     data_dir = get_data_dir(cfg)
     db_path = data_dir / "zotero.sqlite"

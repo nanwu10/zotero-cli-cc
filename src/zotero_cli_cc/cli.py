@@ -45,7 +45,14 @@ def main(
     verbose: bool,
     profile: str | None,
 ) -> None:
-    """zot — Zotero CLI for Claude Code."""
+    """zot — Zotero CLI for Claude Code.
+
+    \b
+    Quick start:
+      zot search "attention mechanism"    Search papers
+      zot read ABC123                     View paper details
+      zot --json search "BERT"            JSON output for AI
+    """
     ctx.ensure_object(dict)
     ctx.obj["json"] = output_json
     ctx.obj["limit"] = limit

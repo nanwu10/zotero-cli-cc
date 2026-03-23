@@ -15,7 +15,15 @@ from zotero_cli_cc.models import ErrorInfo
 @click.option("--url", default=None, help="URL to add")
 @click.pass_context
 def add_cmd(ctx: click.Context, doi: str | None, url: str | None) -> None:
-    """Add an item to the Zotero library."""
+    """Add an item to the Zotero library via DOI or URL.
+
+    Requires API credentials (run 'zot config init' first).
+
+    \b
+    Examples:
+      zot add --doi "10.1038/s41586-023-06139-9"
+      zot add --url "https://arxiv.org/abs/2301.00001"
+    """
     cfg = load_config(profile=ctx.obj.get("profile"))
     json_out = ctx.obj.get("json", False)
     library_id = os.environ.get("ZOT_LIBRARY_ID", cfg.library_id)

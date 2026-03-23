@@ -12,7 +12,15 @@ from zotero_cli_cc.formatter import format_items
 @click.option("--collection", default=None, help="Filter by collection name")
 @click.pass_context
 def search_cmd(ctx: click.Context, query: str, collection: str | None) -> None:
-    """Search the Zotero library."""
+    """Search the Zotero library by title, author, tag, or full text.
+
+    \b
+    Examples:
+      zot search "transformer attention"
+      zot search "BERT" --collection "NLP"
+      zot --json search "single cell"
+      zot --detail minimal search "GAN"
+    """
     cfg = load_config(profile=ctx.obj.get("profile"))
     data_dir = get_data_dir(cfg)
     db_path = data_dir / "zotero.sqlite"

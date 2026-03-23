@@ -16,7 +16,14 @@ from zotero_cli_cc.models import ErrorInfo
 @click.option("--add", "content", default=None, help="Add a new note")
 @click.pass_context
 def note_cmd(ctx: click.Context, key: str, content: str | None) -> None:
-    """View or add notes for an item."""
+    """View or add notes for an item.
+
+    \b
+    Examples:
+      zot note ABC123                            View notes
+      zot note ABC123 --add "Key finding: ..."   Add a note
+      zot --json note ABC123                     JSON output
+    """
     cfg = load_config(profile=ctx.obj.get("profile"))
     json_out = ctx.obj.get("json", False)
 

@@ -17,7 +17,14 @@ from zotero_cli_cc.models import ErrorInfo
 )
 @click.pass_context
 def export_cmd(ctx: click.Context, key: str, fmt: str) -> None:
-    """Export citation."""
+    """Export citation in BibTeX, CSL-JSON, or raw JSON format.
+
+    \b
+    Examples:
+      zot export ABC123                    BibTeX (default)
+      zot export ABC123 --format csl-json  CSL-JSON
+      zot export ABC123 --format json      Raw JSON metadata
+    """
     cfg = load_config(profile=ctx.obj.get("profile"))
     data_dir = get_data_dir(cfg)
     db_path = data_dir / "zotero.sqlite"

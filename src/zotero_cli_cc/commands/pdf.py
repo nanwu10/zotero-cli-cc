@@ -16,7 +16,16 @@ from zotero_cli_cc.models import ErrorInfo
 @click.option("--pages", default=None, help="Page range, e.g. '1-5'")
 @click.pass_context
 def pdf_cmd(ctx: click.Context, key: str, pages: str | None) -> None:
-    """Extract text from the PDF attachment."""
+    """Extract text from the PDF attachment.
+
+    Full text is cached locally for fast repeated access.
+
+    \b
+    Examples:
+      zot pdf ABC123                Extract full text
+      zot pdf ABC123 --pages 1-5    Extract pages 1-5
+      zot --json pdf ABC123         JSON output with metadata
+    """
     cfg = load_config(profile=ctx.obj.get("profile"))
     json_out = ctx.obj.get("json", False)
     page_range = None

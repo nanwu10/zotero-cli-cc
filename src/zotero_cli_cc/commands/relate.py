@@ -12,7 +12,13 @@ from zotero_cli_cc.models import ErrorInfo
 @click.argument("key")
 @click.pass_context
 def relate_cmd(ctx: click.Context, key: str) -> None:
-    """Find related items."""
+    """Find related items via shared tags, collections, or explicit relations.
+
+    \b
+    Examples:
+      zot relate ABC123
+      zot --json relate ABC123
+    """
     cfg = load_config(profile=ctx.obj.get("profile"))
     json_out = ctx.obj.get("json", False)
     data_dir = get_data_dir(cfg)

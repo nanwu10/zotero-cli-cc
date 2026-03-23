@@ -14,7 +14,14 @@ from zotero_cli_cc.models import ErrorInfo
 @click.argument("key")
 @click.pass_context
 def summarize_cmd(ctx: click.Context, key: str) -> None:
-    """Output a structured summary for Claude Code consumption."""
+    """Output a structured summary for Claude Code consumption.
+
+    \b
+    Examples:
+      zot summarize ABC123
+      zot --json summarize ABC123
+      zot --detail minimal summarize ABC123
+    """
     cfg = load_config(profile=ctx.obj.get("profile"))
     json_out = ctx.obj.get("json", False)
     data_dir = get_data_dir(cfg)
