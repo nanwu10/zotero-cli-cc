@@ -147,8 +147,17 @@ class TestExportCitation:
         assert data["DOI"] == "10.5555/attention"
         assert any(a["family"] == "Vaswani" for a in data["author"])
 
+    def test_export_ris(self, reader: ZoteroReader):
+        ris = reader.export_citation("ATTN001", fmt="ris")
+        assert ris is not None
+        assert "TY  - JOUR" in ris
+        assert "TI  - Attention Is All You Need" in ris
+        assert "AU  - Vaswani," in ris
+        assert "DO  - 10.5555/attention" in ris
+        assert "ER  - " in ris
+
     def test_export_unsupported_format(self, reader: ZoteroReader):
-        result = reader.export_citation("ATTN001", fmt="ris")
+        result = reader.export_citation("ATTN001", fmt="xml")
         assert result is None
 
     def test_export_nonexistent(self, reader: ZoteroReader):

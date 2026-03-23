@@ -13,16 +13,17 @@ from zotero_cli_cc.models import ErrorInfo
 @click.command("export")
 @click.argument("key")
 @click.option(
-    "--format", "fmt", default="bibtex", type=click.Choice(["bibtex", "csl-json", "json"]), help="Export format"
+    "--format", "fmt", default="bibtex", type=click.Choice(["bibtex", "csl-json", "ris", "json"]), help="Export format"
 )
 @click.pass_context
 def export_cmd(ctx: click.Context, key: str, fmt: str) -> None:
-    """Export citation in BibTeX, CSL-JSON, or raw JSON format.
+    """Export citation in BibTeX, CSL-JSON, RIS, or raw JSON format.
 
     \b
     Examples:
       zot export ABC123                    BibTeX (default)
       zot export ABC123 --format csl-json  CSL-JSON
+      zot export ABC123 --format ris       RIS
       zot export ABC123 --format json      Raw JSON metadata
     """
     cfg = load_config(profile=ctx.obj.get("profile"))

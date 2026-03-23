@@ -79,6 +79,12 @@ class TestExport:
         assert "@article" in result.output
         assert "Attention" in result.output
 
+    def test_export_ris(self, test_db_path):
+        result = _invoke(["export", "ATTN001", "--format", "ris"], test_db_path)
+        assert result.exit_code == 0
+        assert "TY  - JOUR" in result.output
+        assert "TI  - Attention" in result.output
+
     def test_export_json(self, test_db_path):
         result = _invoke(["export", "ATTN001", "--format", "json"], test_db_path)
         assert result.exit_code == 0

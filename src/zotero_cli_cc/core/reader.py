@@ -408,6 +408,8 @@ class ZoteroReader:
             return self._to_bibtex(item)
         if fmt in ("csl", "csl-json", "json"):
             return self._to_csl_json(item)
+        if fmt == "ris":
+            return self._to_ris(item)
         return None
 
     def get_related_items(self, key: str, limit: int = 20) -> list[Item]:
@@ -675,6 +677,41 @@ class ZoteroReader:
         if item.url:
             csl["URL"] = item.url
         return json.dumps(csl, indent=2, ensure_ascii=False)
+
+    @staticmethod
+    def _to_ris(item: Item) -> str:
+        """Convert an Item to RIS format."""
+        type_map = {
+            "journalArticle": "JOUR",
+            "book": "BOOK",
+            "bookSection": "CHAP",
+            "conferencePaper": "CONF",
+            "thesis": "THES",
+            "report": "RPRT",
+            "webpage": "ELEC",
+            "preprint": "JOUR",
+            "patent": "PAT",
+            "newspaperArticle": "NEWS",
+            "magazineArticle": "MGZN",
+        }
+        lines = [f"TY  - {type_map.get(item.item_type, 'GEN')}"]
+        if item.title:
+            lines.append(f"TI  - {item.title}")
+        for c in item.creators:
+            if c.creator_type == "author":
+                lines.append(f"AU  - {c.last_name}, {c.first_name}")
+        if item.date:
+            lines.append(f"PY  - {item.date}")
+        if item.abstract:
+            lines.append(f"AB  - {item.abstract}")
+        if item.doi:
+            lines.append(f"DO  - {item.doi}")
+        if item.url:
+            lines.append(f"UR  - {item.url}")
+        for tag in item.tags:
+            lines.append(f"KW  - {tag}")
+        lines.append("ER  - ")
+        return "\n".join(lines)
 
     @staticmethod
     def _html_to_markdown(html: str) -> str:

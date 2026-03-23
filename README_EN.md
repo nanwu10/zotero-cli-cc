@@ -198,7 +198,7 @@ Restart your terminal or `source` the config file to enable tab completions.
 | **JSON Output** | ✅ | ✅ | ❌ | ❌ | N/A | N/A | N/A |
 | **Note Management** | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
 | **Collections** | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ |
-| **Citation Export** | ✅ BibTeX/JSON | ✅ | ❌ | ✅ Excel | ❌ | ❌ | ❌ |
+| **Citation Export** | ✅ BibTeX/CSL-JSON/RIS | ✅ | ❌ | ✅ Excel | ❌ | ❌ | ❌ |
 | **Semantic Search** | [RAK](https://github.com/Agents365-ai/zotero-rag-cli) | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
 | **Detail Levels** | **✅** | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
 | **Multi-Profile** | **✅** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -276,7 +276,7 @@ cp -r skill/zotero-cli-cc ~/.claude/skills/
 
 - [ ] `zot cite`: copy formatted citation to clipboard (APA, Nature, Vancouver, etc.)
 - [ ] Bulk operations from file input (`zot add --from-file dois.txt`)
-- [ ] `zot export`: add RIS format support (BibTeX & CSL-JSON already exist)
+- [x] `zot export`: add RIS format support (BibTeX, CSL-JSON, RIS, JSON)
 
 ### Polish
 

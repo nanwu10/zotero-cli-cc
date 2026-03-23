@@ -489,7 +489,7 @@ def export(key: str, fmt: str = "bibtex") -> dict:
 
     Args:
         key: The Zotero item key.
-        fmt: Citation format — 'bibtex' or 'csl-json' (default 'bibtex').
+        fmt: Citation format — 'bibtex', 'csl-json', or 'ris' (default 'bibtex').
     """
     return _handle_export(key, fmt)
 

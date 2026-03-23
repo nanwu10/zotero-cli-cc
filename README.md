@@ -140,8 +140,10 @@ zot tag ABC123 --remove "待读"
 ### 引用导出
 
 ```bash
-zot export ABC123                  # BibTeX
-zot export ABC123 --format json    # JSON
+zot export ABC123                    # BibTeX
+zot export ABC123 --format csl-json  # CSL-JSON
+zot export ABC123 --format ris       # RIS
+zot export ABC123 --format json      # JSON
 ```
 
 ### 文献管理
@@ -220,7 +222,7 @@ zot completions fish > ~/.config/fish/completions/zot.fish
 | **JSON 输出** | ✅ | ✅ | ❌ | ❌ | N/A | N/A | N/A |
 | **笔记管理** | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
 | **Collection 管理** | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ |
-| **引用导出** | ✅ BibTeX/JSON | ✅ | ❌ | ✅ Excel | ❌ | ❌ | ❌ |
+| **引用导出** | ✅ BibTeX/CSL-JSON/RIS | ✅ | ❌ | ✅ Excel | ❌ | ❌ | ❌ |
 | **语义搜索** | [RAK](https://github.com/Agents365-ai/zotero-rag-cli) | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
 | **输出分级** | **✅** | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
 | **多配置档案** | **✅** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -276,7 +278,7 @@ graph TD
 
 - [ ] `zot cite`：格式化引用并复制到剪贴板（APA、Nature、Vancouver 等样式）
 - [ ] 批量操作：从文件批量导入（`zot add --from-file dois.txt`）
-- [ ] `zot export`：增加 RIS 格式支持（BibTeX 和 CSL-JSON 已支持）
+- [x] `zot export`：增加 RIS 格式支持（BibTeX、CSL-JSON、RIS、JSON）
 
 ### Polish
 
