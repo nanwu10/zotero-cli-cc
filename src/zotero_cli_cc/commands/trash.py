@@ -1,0 +1,91 @@
+from __future__ import annotations
+
+import os
+
+import click
+
+from zotero_cli_cc.config import get_data_dir, load_config
+from zotero_cli_cc.core.reader import ZoteroReader
+from zotero_cli_cc.core.writer import SYNC_REMINDER, ZoteroWriteError, ZoteroWriter
+from zotero_cli_cc.formatter import format_error, format_items
+from zotero_cli_cc.models import ErrorInfo
+
+
+@click.group("trash")
+def trash_group() -> None:
+    """Manage trashed items (list, restore)."""
+    pass
+
+
+@trash_group.command("list")
+@click.pass_context
+def trash_list_cmd(ctx: click.Context) -> None:
+    """List items in the trash.
+
+    \b
+    Examples:
+      zot trash list
+      zot --json trash list
+    """
+    cfg = load_config(profile=ctx.obj.get("profile"))
+    data_dir = get_data_dir(cfg)
+    reader = ZoteroReader(data_dir / "zotero.sqlite")
+    try:
+        limit = ctx.obj.get("limit", cfg.default_limit)
+        items = reader.get_trash_items(limit=limit)
+        if not items:
+            if ctx.obj.get("json"):
+                click.echo("[]")
+            else:
+                click.echo("Trash is empty.")
+            return
+        detail = ctx.obj.get("detail", "standard")
+        click.echo(format_items(items, output_json=ctx.obj.get("json", False), detail=detail))
+    finally:
+        reader.close()
+
+
+@trash_group.command("restore")
+@click.argument("keys", nargs=-1, required=True)
+@click.pass_context
+def trash_restore_cmd(ctx: click.Context, keys: tuple[str, ...]) -> None:
+    """Restore item(s) from trash.
+
+    \b
+    Examples:
+      zot trash restore ABC123
+      zot trash restore KEY1 KEY2 KEY3
+    """
+    cfg = load_config(profile=ctx.obj.get("profile"))
+    json_out = ctx.obj.get("json", False)
+    library_id = os.environ.get("ZOT_LIBRARY_ID", cfg.library_id)
+    api_key = os.environ.get("ZOT_API_KEY", cfg.api_key)
+    if not library_id or not api_key:
+        click.echo(
+            format_error(
+                ErrorInfo(
+                    message="Write credentials not configured",
+                    context="trash restore",
+                    hint="Run 'zot config init' to set up API credentials",
+                ),
+                output_json=json_out,
+            )
+        )
+        return
+
+    writer = ZoteroWriter(library_id=library_id, api_key=api_key)
+    any_success = False
+    for key in keys:
+        try:
+            writer.restore_from_trash(key)
+            click.echo(f"Restored: {key}")
+            any_success = True
+        except ZoteroWriteError as e:
+            click.echo(
+                format_error(
+                    ErrorInfo(message=str(e), context="trash restore", hint=f"Failed for key '{key}'"),
+                    output_json=json_out,
+                )
+            )
+    if any_success:
+        click.echo(SYNC_REMINDER)

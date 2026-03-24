@@ -81,6 +81,17 @@ class ZoteroWriter:
         except (HttpxConnectError, HttpxTimeoutException) as e:
             raise ZoteroWriteError(f"Network error: {e}") from e
 
+    def restore_from_trash(self, key: str) -> None:
+        """Restore an item from trash by clearing its deleted flag."""
+        try:
+            item = self._zot.item(key)
+            item["data"]["deleted"] = 0
+            self._zot.update_item(item)
+        except ResourceNotFoundError:
+            raise ZoteroWriteError(f"Item '{key}' not found")
+        except (HttpxConnectError, HttpxTimeoutException) as e:
+            raise ZoteroWriteError(f"Network error: {e}") from e
+
     def delete_item(self, key: str) -> None:
         try:
             item = self._zot.item(key)

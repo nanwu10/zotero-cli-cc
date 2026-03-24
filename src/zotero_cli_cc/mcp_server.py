@@ -464,6 +464,21 @@ def _handle_collection_rename(collection_key: str, new_name: str) -> dict:
         return {"error": str(e), "context": "collection_rename"}
 
 
+def _handle_trash_list(limit: int = 50) -> dict:
+    reader = _get_reader()
+    items = reader.get_trash_items(limit=limit)
+    return {"items": [_item_to_dict(i) for i in items], "total": len(items)}
+
+
+def _handle_trash_restore(key: str) -> dict:
+    try:
+        writer = _get_writer()
+        writer.restore_from_trash(key)
+        return {"key": key, "restored": True}
+    except ZoteroWriteError as e:
+        return {"error": str(e), "context": "trash_restore"}
+
+
 # ---------------------------------------------------------------------------
 # MCP tool definitions
 # ---------------------------------------------------------------------------
@@ -780,3 +795,23 @@ def collection_reorganize(plan: dict) -> dict:
         plan: JSON object with collections array, each having name and items list.
     """
     return _handle_collection_reorganize(plan)
+
+
+@mcp.tool()
+def trash_list(limit: int = 50) -> dict:
+    """List items currently in the Zotero trash.
+
+    Args:
+        limit: Maximum number of trashed items to return (default 50).
+    """
+    return _handle_trash_list(limit)
+
+
+@mcp.tool()
+def trash_restore(key: str) -> dict:
+    """Restore a trashed item back to the Zotero library.
+
+    Args:
+        key: The item key to restore from trash.
+    """
+    return _handle_trash_restore(key)

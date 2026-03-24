@@ -25,6 +25,7 @@ from zotero_cli_cc.commands.stats import stats_cmd
 from zotero_cli_cc.commands.summarize import summarize_cmd
 from zotero_cli_cc.commands.summarize_all import summarize_all_cmd
 from zotero_cli_cc.commands.tag import tag_cmd
+from zotero_cli_cc.commands.trash import trash_group
 from zotero_cli_cc.commands.update import update_cmd
 
 
@@ -86,3 +87,4 @@ main.add_command(cite_cmd, "cite")
 main.add_command(completions_cmd, "completions")
 main.add_command(recent_cmd, "recent")
 main.add_command(update_cmd, "update")
+main.add_command(trash_group, "trash")
