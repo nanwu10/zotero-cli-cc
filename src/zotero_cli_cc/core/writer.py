@@ -69,6 +69,18 @@ class ZoteroWriter:
         except (HttpxConnectError, HttpxTimeoutException) as e:
             raise ZoteroWriteError(f"Network error: {e}") from e
 
+    def update_item(self, key: str, fields: dict[str, str]) -> None:
+        """Update item metadata fields."""
+        try:
+            item = self._zot.item(key)
+            for field_name, value in fields.items():
+                item["data"][field_name] = value
+            self._zot.update_item(item)
+        except ResourceNotFoundError:
+            raise ZoteroWriteError(f"Item '{key}' not found")
+        except (HttpxConnectError, HttpxTimeoutException) as e:
+            raise ZoteroWriteError(f"Network error: {e}") from e
+
     def delete_item(self, key: str) -> None:
         try:
             item = self._zot.item(key)

@@ -355,6 +355,15 @@ def _handle_delete(keys: list[str]) -> dict:
     return {"results": results}
 
 
+def _handle_update(key: str, fields: dict) -> dict:
+    try:
+        writer = _get_writer()
+        writer.update_item(key, fields)
+        return {"status": "updated", "key": key, "fields": fields}
+    except ZoteroWriteError as e:
+        return {"error": str(e), "context": "update"}
+
+
 def _handle_collection_create(name: str, parent_key: str | None) -> dict:
     try:
         writer = _get_writer()
@@ -664,6 +673,28 @@ def delete(keys: list[str]) -> dict:
         keys: List of Zotero item keys to delete (e.g. ['ABC123'] or ['K1', 'K2']).
     """
     return _handle_delete(keys)
+
+
+@mcp.tool()
+def update(key: str, title: str | None = None, date: str | None = None, fields: dict | None = None) -> dict:
+    """Update item metadata. Pass title/date directly or use fields dict for arbitrary fields.
+
+    Args:
+        key: Item key to update.
+        title: New title (optional).
+        date: New date (optional).
+        fields: Dict of field_name: value pairs for arbitrary fields (optional).
+    """
+    update_fields: dict[str, str] = {}
+    if title:
+        update_fields["title"] = title
+    if date:
+        update_fields["date"] = date
+    if fields:
+        update_fields.update(fields)
+    if not update_fields:
+        return {"error": "No fields to update"}
+    return _handle_update(key, update_fields)
 
 
 @mcp.tool()
