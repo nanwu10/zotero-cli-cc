@@ -89,9 +89,9 @@ def _collection_to_dict(coll: Collection) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def _handle_search(query: str, collection: str | None, limit: int) -> dict:
+def _handle_search(query: str, collection: str | None, limit: int, item_type: str | None = None) -> dict:
     reader = _get_reader()
-    result = reader.search(query, collection=collection, limit=limit)
+    result = reader.search(query, collection=collection, item_type=item_type, limit=limit)
     return {
         "items": [_item_to_dict(i) for i in result.items],
         "total": result.total,
@@ -99,9 +99,9 @@ def _handle_search(query: str, collection: str | None, limit: int) -> dict:
     }
 
 
-def _handle_list_items(limit: int) -> dict:
+def _handle_list_items(limit: int, item_type: str | None = None) -> dict:
     reader = _get_reader()
-    result = reader.search("", collection=None, limit=limit)
+    result = reader.search("", collection=None, item_type=item_type, limit=limit)
     return {
         "items": [_item_to_dict(i) for i in result.items],
         "total": result.total,
@@ -420,25 +420,27 @@ def _handle_collection_rename(collection_key: str, new_name: str) -> dict:
 
 
 @mcp.tool()
-def search(query: str, collection: str | None = None, limit: int = 50) -> dict:
+def search(query: str, collection: str | None = None, item_type: str | None = None, limit: int = 50) -> dict:
     """Search the Zotero library by title, author, tag, or full text.
 
     Args:
         query: Search query string.
         collection: Optional collection name or key to filter results.
+        item_type: Optional item type filter (e.g. journalArticle, book, preprint).
         limit: Maximum number of results (default 50).
     """
-    return _handle_search(query, collection, limit)
+    return _handle_search(query, collection, limit, item_type=item_type)
 
 
 @mcp.tool()
-def list_items(limit: int = 50) -> dict:
+def list_items(item_type: str | None = None, limit: int = 50) -> dict:
     """List all items in the Zotero library.
 
     Args:
+        item_type: Optional item type filter (e.g. journalArticle, book, preprint).
         limit: Maximum number of items to return (default 50).
     """
-    return _handle_list_items(limit)
+    return _handle_list_items(limit, item_type=item_type)
 
 
 @mcp.tool()

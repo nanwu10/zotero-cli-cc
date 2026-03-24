@@ -10,8 +10,9 @@ from zotero_cli_cc.formatter import format_items
 @click.command("search")
 @click.argument("query")
 @click.option("--collection", default=None, help="Filter by collection name")
+@click.option("--type", "item_type", default=None, help="Filter by item type (e.g. journalArticle, book, preprint)")
 @click.pass_context
-def search_cmd(ctx: click.Context, query: str, collection: str | None) -> None:
+def search_cmd(ctx: click.Context, query: str, collection: str | None, item_type: str | None) -> None:
     """Search the Zotero library by title, author, tag, or full text.
 
     \b
@@ -27,7 +28,7 @@ def search_cmd(ctx: click.Context, query: str, collection: str | None) -> None:
     reader = ZoteroReader(db_path)
     try:
         limit = ctx.obj.get("limit", cfg.default_limit)
-        result = reader.search(query, collection=collection, limit=limit)
+        result = reader.search(query, collection=collection, item_type=item_type, limit=limit)
         if not result.items:
             if ctx.obj.get("json"):
                 click.echo("[]")

@@ -149,7 +149,7 @@ class TestHandleSearch:
         mock_get_reader.return_value = reader
 
         _handle_search("q", "MyCol", 10)
-        reader.search.assert_called_once_with("q", collection="MyCol", limit=10)
+        reader.search.assert_called_once_with("q", collection="MyCol", item_type=None, limit=10)
 
 
 class TestHandleListItems:
@@ -165,7 +165,7 @@ class TestHandleListItems:
         result = _handle_list_items(50)
         assert result["total"] == 1
         assert len(result["items"]) == 1
-        reader.search.assert_called_once_with("", collection=None, limit=50)
+        reader.search.assert_called_once_with("", collection=None, item_type=None, limit=50)
 
 
 class TestHandleRead:

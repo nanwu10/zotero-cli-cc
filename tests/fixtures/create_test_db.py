@@ -24,6 +24,7 @@ def create_test_db() -> None:
         INSERT INTO itemTypes VALUES (3, 'book');
         INSERT INTO itemTypes VALUES (26, 'note');
         INSERT INTO itemTypes VALUES (14, 'attachment');
+        INSERT INTO itemTypes VALUES (37, 'preprint');
 
         CREATE TABLE fields (fieldID INTEGER PRIMARY KEY, fieldName TEXT NOT NULL);
         INSERT INTO fields VALUES (1, 'url');
@@ -127,6 +128,19 @@ def create_test_db() -> None:
     c.execute("INSERT INTO creators VALUES (4, 'Ian', 'Goodfellow')")
     c.execute("INSERT INTO itemCreators VALUES (3, 4, 1, 0)")
 
+    # Item 4: Preprint "Scaling Laws for Neural Language Models"
+    c.execute("INSERT INTO items VALUES (6, 37, '2024-04-01', '2024-04-02', '2024-04-02', 1, 'SCAL006')")
+    c.execute("INSERT INTO itemDataValues VALUES (12, 'Scaling Laws for Neural Language Models')")
+    c.execute("INSERT INTO itemDataValues VALUES (13, 'We study scaling laws...')")
+    c.execute("INSERT INTO itemDataValues VALUES (14, '2020')")
+    c.execute("INSERT INTO itemData VALUES (6, 4, 12)")  # title
+    c.execute("INSERT INTO itemData VALUES (6, 6, 13)")  # abstract
+    c.execute("INSERT INTO itemData VALUES (6, 14, 14)")  # date
+    c.execute("INSERT INTO creators VALUES (5, 'Jared', 'Kaplan')")
+    c.execute("INSERT INTO itemCreators VALUES (6, 5, 1, 0)")
+    c.execute("INSERT INTO tags VALUES (4, 'scaling')")
+    c.execute("INSERT INTO itemTags VALUES (6, 4, 0)")
+
     # Collections
     c.execute("INSERT INTO collections VALUES (1, 'Machine Learning', NULL, 1, 'COLML01')")
     c.execute("INSERT INTO collections VALUES (2, 'Transformers', 1, 1, 'COLTR02')")
@@ -134,6 +148,7 @@ def create_test_db() -> None:
     c.execute("INSERT INTO collectionItems VALUES (1, 2, 0)")
     c.execute("INSERT INTO collectionItems VALUES (2, 1, 0)")
     c.execute("INSERT INTO collectionItems VALUES (1, 3, 0)")
+    c.execute("INSERT INTO collectionItems VALUES (1, 6, 0)")
 
     # Notes
     c.execute("INSERT INTO items VALUES (4, 26, '2024-01-03', '2024-01-03', '2024-01-03', 1, 'NOTE004')")

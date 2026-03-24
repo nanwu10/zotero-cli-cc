@@ -176,6 +176,7 @@ class ZoteroReader:
         self,
         query: str,
         collection: str | None = None,
+        item_type: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> SearchResult:
@@ -245,6 +246,23 @@ class ZoteroReader:
                 ).fetchall()
                 col_item_ids = {r["itemID"] for r in col_items}
                 item_ids &= col_item_ids
+            else:
+                item_ids = set()
+
+        # Filter by item type
+        if item_type:
+            type_row = conn.execute(
+                "SELECT itemTypeID FROM itemTypes WHERE typeName = ?",
+                (item_type,),
+            ).fetchone()
+            if type_row:
+                typed_items = conn.execute(
+                    "SELECT itemID FROM items WHERE itemTypeID = ? AND itemID IN ({})".format(
+                        ",".join("?" * len(item_ids))
+                    ),
+                    (type_row["itemTypeID"], *item_ids),
+                ).fetchall()
+                item_ids = {r["itemID"] for r in typed_items}
             else:
                 item_ids = set()
 
