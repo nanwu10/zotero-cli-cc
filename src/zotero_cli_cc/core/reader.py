@@ -32,8 +32,9 @@ MAX_SCHEMA_VERSION = 200
 
 
 class ZoteroReader:
-    def __init__(self, db_path: Path) -> None:
+    def __init__(self, db_path: Path, library_id: int = 1) -> None:
         self._db_path = db_path
+        self._library_id = library_id
         self._conn: sqlite3.Connection | None = None
         self._tmp_dir: Path | None = None
         self._excluded_sql: str | None = None
@@ -90,6 +91,13 @@ class ZoteroReader:
         ph = ",".join("?" * len(ids))
         return f"NOT IN ({ph})", ids
 
+    def _library_filter(self) -> tuple[str, tuple[int, ...]]:
+        """Return (SQL fragment, params) for filtering by library.
+        Returns empty string/tuple for library_id=1 to preserve existing behavior."""
+        if self._library_id == 1:
+            return "", ()
+        return "AND i.libraryID = ?", (self._library_id,)
+
     def _connect_from_copy(self) -> sqlite3.Connection:
         """Copy DB files to temp dir to avoid WAL locks."""
         self._tmp_dir_obj = tempfile.TemporaryDirectory()
@@ -141,12 +149,22 @@ class ZoteroReader:
                 stacklevel=2,
             )
 
-    def get_item(self, key: str) -> Item | None:
+    def resolve_group_library_id(self, group_id: int) -> int | None:
+        """Look up the SQLite libraryID for a Zotero group by its public groupID."""
         conn = self._connect()
         row = conn.execute(
+            "SELECT libraryID FROM groups WHERE groupID = ?",
+            (group_id,),
+        ).fetchone()
+        return row["libraryID"] if row else None
+
+    def get_item(self, key: str) -> Item | None:
+        conn = self._connect()
+        lib_sql, lib_params = self._library_filter()
+        row = conn.execute(
             "SELECT itemID, itemTypeID, key, dateAdded, dateModified "
-            "FROM items WHERE key = ? AND itemTypeID " + self._get_excluded_sql(),
-            (key,),
+            "FROM items i WHERE key = ? AND itemTypeID " + self._get_excluded_sql() + " " + lib_sql,
+            (key, *lib_params),
         ).fetchone()
         if row is None:
             return None
@@ -188,6 +206,7 @@ class ZoteroReader:
         conn = self._connect()
         item_ids: set[int] = set()
         excl_sql, excl_params = self._excluded_filter()
+        lib_sql, lib_params = self._library_filter()
 
         if query:
             like = f"%{query}%"
@@ -196,8 +215,8 @@ class ZoteroReader:
                 "SELECT DISTINCT i.itemID FROM items i "
                 "JOIN itemData id ON i.itemID = id.itemID "
                 "JOIN itemDataValues iv ON id.valueID = iv.valueID "
-                f"WHERE iv.value LIKE ? AND i.itemTypeID {excl_sql}",
-                (like, *excl_params),
+                f"WHERE iv.value LIKE ? AND i.itemTypeID {excl_sql} {lib_sql}",
+                (like, *excl_params, *lib_params),
             ).fetchall()
             item_ids.update(r["itemID"] for r in rows)
 
@@ -207,8 +226,8 @@ class ZoteroReader:
                 "JOIN creators c ON ic.creatorID = c.creatorID "
                 "JOIN items i ON ic.itemID = i.itemID "
                 "WHERE (c.firstName LIKE ? OR c.lastName LIKE ?) "
-                f"AND i.itemTypeID {excl_sql}",
-                (like, like, *excl_params),
+                f"AND i.itemTypeID {excl_sql} {lib_sql}",
+                (like, like, *excl_params, *lib_params),
             ).fetchall()
             item_ids.update(r["itemID"] for r in rows)
 
@@ -217,8 +236,8 @@ class ZoteroReader:
                 "SELECT DISTINCT it.itemID FROM itemTags it "
                 "JOIN tags t ON it.tagID = t.tagID "
                 "JOIN items i ON it.itemID = i.itemID "
-                f"WHERE t.name LIKE ? AND i.itemTypeID {excl_sql}",
-                (like, *excl_params),
+                f"WHERE t.name LIKE ? AND i.itemTypeID {excl_sql} {lib_sql}",
+                (like, *excl_params, *lib_params),
             ).fetchall()
             item_ids.update(r["itemID"] for r in rows)
 
@@ -233,8 +252,8 @@ class ZoteroReader:
             item_ids.update(r["parentItemID"] for r in rows)
         else:
             rows = conn.execute(
-                f"SELECT itemID FROM items WHERE itemTypeID {excl_sql}",
-                excl_params,
+                f"SELECT itemID FROM items i WHERE itemTypeID {excl_sql} {lib_sql}",
+                (*excl_params, *lib_params),
             ).fetchall()
             item_ids.update(r["itemID"] for r in rows)
 
@@ -325,10 +344,11 @@ class ZoteroReader:
         """Return items added or modified since the given timestamp."""
         conn = self._connect()
         excl_sql, excl_params = self._excluded_filter()
+        lib_sql, lib_params = self._library_filter()
         col = "dateModified" if sort == "dateModified" else "dateAdded"
         rows = conn.execute(
-            f"SELECT itemID FROM items WHERE {col} >= ? AND itemTypeID {excl_sql} ORDER BY {col} DESC LIMIT ?",
-            (since, *excl_params, limit),
+            f"SELECT itemID FROM items i WHERE {col} >= ? AND itemTypeID {excl_sql} {lib_sql} ORDER BY {col} DESC LIMIT ?",
+            (since, *excl_params, *lib_params, limit),
         ).fetchall()
         item_ids = [r["itemID"] for r in rows]
         return self._get_items_batch(conn, item_ids) if item_ids else []
@@ -337,12 +357,13 @@ class ZoteroReader:
         """Return items in the trash, ordered by deletion date (newest first)."""
         conn = self._connect()
         excl_sql, excl_params = self._excluded_filter()
+        lib_sql, lib_params = self._library_filter()
         rows = conn.execute(
             f"SELECT i.itemID FROM items i "
             f"JOIN deletedItems d ON i.itemID = d.itemID "
-            f"WHERE i.itemTypeID {excl_sql} "
+            f"WHERE i.itemTypeID {excl_sql} {lib_sql} "
             f"ORDER BY d.dateDeleted DESC LIMIT ?",
-            (*excl_params, limit),
+            (*excl_params, *lib_params, limit),
         ).fetchall()
         item_ids = [r["itemID"] for r in rows]
         return self._get_items_batch(conn, item_ids) if item_ids else []
@@ -356,11 +377,12 @@ class ZoteroReader:
         """Find potential duplicate items by DOI and/or title similarity."""
         conn = self._connect()
         excl_sql, excl_params = self._excluded_filter()
+        lib_sql, lib_params = self._library_filter()
 
         # Load items for comparison (cap at 10k most recent)
         rows = conn.execute(
-            f"SELECT i.itemID, i.key FROM items i WHERE i.itemTypeID {excl_sql} ORDER BY i.dateAdded DESC LIMIT 10000",
-            excl_params,
+            f"SELECT i.itemID, i.key FROM items i WHERE i.itemTypeID {excl_sql} {lib_sql} ORDER BY i.dateAdded DESC LIMIT 10000",
+            (*excl_params, *lib_params),
         ).fetchall()
 
         item_keys = {r["itemID"]: r["key"] for r in rows}
@@ -484,7 +506,10 @@ class ZoteroReader:
 
     def get_collections(self) -> list[Collection]:
         conn = self._connect()
-        rows = conn.execute("SELECT collectionID, collectionName, parentCollectionID, key FROM collections").fetchall()
+        rows = conn.execute(
+            "SELECT collectionID, collectionName, parentCollectionID, key FROM collections WHERE libraryID = ?",
+            (self._library_id,),
+        ).fetchall()
         coll_map: dict[int, Collection] = {}
         parent_map: dict[int, int | None] = {}
         for r in rows:
@@ -560,17 +585,20 @@ class ZoteroReader:
     def get_stats(self) -> dict:
         """Return library statistics."""
         conn = self._connect()
+        lib_sql, lib_params = self._library_filter()
         # Total items (excluding attachments and notes)
         total = conn.execute(
-            "SELECT COUNT(*) as cnt FROM items WHERE itemTypeID " + self._get_excluded_sql()
+            "SELECT COUNT(*) as cnt FROM items i WHERE itemTypeID " + self._get_excluded_sql() + " " + lib_sql,
+            lib_params,
         ).fetchone()["cnt"]
 
         # Items by type
         type_rows = conn.execute(
             "SELECT t.typeName, COUNT(*) as cnt FROM items i "
             "JOIN itemTypes t ON i.itemTypeID = t.itemTypeID "
-            "WHERE i.itemTypeID " + self._get_excluded_sql() + " "
-            "GROUP BY t.typeName ORDER BY cnt DESC"
+            "WHERE i.itemTypeID " + self._get_excluded_sql() + " " + lib_sql + " "
+            "GROUP BY t.typeName ORDER BY cnt DESC",
+            lib_params,
         ).fetchall()
         by_type = {r["typeName"]: r["cnt"] for r in type_rows}
 

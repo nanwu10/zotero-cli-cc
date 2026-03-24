@@ -18,6 +18,16 @@ def create_test_db() -> None:
     c.executescript("""
         CREATE TABLE libraries (libraryID INTEGER PRIMARY KEY, type TEXT NOT NULL, editable INT NOT NULL DEFAULT 1, filesEditable INT NOT NULL DEFAULT 1);
         INSERT INTO libraries VALUES (1, 'user', 1, 1);
+        INSERT INTO libraries VALUES (2, 'group', 1, 1);
+
+        CREATE TABLE groups (
+            groupID INTEGER PRIMARY KEY,
+            libraryID INT NOT NULL UNIQUE,
+            name TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            version INT NOT NULL DEFAULT 1
+        );
+        INSERT INTO groups VALUES (99999, 2, 'Lab Group', '', 1);
 
         CREATE TABLE itemTypes (itemTypeID INTEGER PRIMARY KEY, typeName TEXT NOT NULL);
         INSERT INTO itemTypes VALUES (2, 'journalArticle');
@@ -194,6 +204,19 @@ def create_test_db() -> None:
     c.execute("INSERT INTO itemDataValues VALUES (18, '10.5555/attention')")  # Same DOI as ATTN001
     c.execute("INSERT INTO itemData VALUES (8, 4, 17)")  # title
     c.execute("INSERT INTO itemData VALUES (8, 26, 18)")  # DOI
+
+    # Item 9: Group library item
+    c.execute("INSERT INTO items VALUES (9, 2, '2024-06-01', '2024-06-02', '2024-06-02', 2, 'GRPITM09')")
+    c.execute("INSERT INTO itemDataValues VALUES (19, 'Group Paper on Protein Folding')")
+    c.execute("INSERT INTO itemDataValues VALUES (20, '2024')")
+    c.execute("INSERT INTO itemData VALUES (9, 4, 19)")  # title
+    c.execute("INSERT INTO itemData VALUES (9, 14, 20)")  # date
+    c.execute("INSERT INTO creators VALUES (7, 'Alice', 'Wong')")
+    c.execute("INSERT INTO itemCreators VALUES (9, 7, 1, 0)")
+
+    # Group collection
+    c.execute("INSERT INTO collections VALUES (3, 'Group Papers', NULL, 2, 'GRPCOL03')")
+    c.execute("INSERT INTO collectionItems VALUES (3, 9, 0)")
 
     conn.commit()
     conn.close()
