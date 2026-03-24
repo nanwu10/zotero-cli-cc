@@ -10,8 +10,26 @@ from zotero_cli_cc.formatter import format_items
 @click.command("list")
 @click.option("--collection", default=None, help="Filter by collection name")
 @click.option("--type", "item_type", default=None, help="Filter by item type (e.g. journalArticle, book, preprint)")
+@click.option(
+    "--sort",
+    default=None,
+    type=click.Choice(["dateAdded", "dateModified", "title", "creator"]),
+    help="Sort results by field",
+)
+@click.option(
+    "--direction",
+    default="desc",
+    type=click.Choice(["asc", "desc"]),
+    help="Sort direction (default: desc)",
+)
 @click.pass_context
-def list_cmd(ctx: click.Context, collection: str | None, item_type: str | None) -> None:
+def list_cmd(
+    ctx: click.Context,
+    collection: str | None,
+    item_type: str | None,
+    sort: str | None,
+    direction: str,
+) -> None:
     """List items in the Zotero library.
 
     \b
@@ -27,7 +45,9 @@ def list_cmd(ctx: click.Context, collection: str | None, item_type: str | None) 
     reader = ZoteroReader(db_path)
     try:
         limit = ctx.obj.get("limit", cfg.default_limit)
-        result = reader.search("", collection=collection, item_type=item_type, limit=limit)
+        result = reader.search(
+            "", collection=collection, item_type=item_type, sort=sort, direction=direction, limit=limit
+        )
         detail = ctx.obj.get("detail", "standard")
         click.echo(format_items(result.items, output_json=ctx.obj.get("json", False), detail=detail))
     finally:

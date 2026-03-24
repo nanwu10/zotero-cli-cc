@@ -177,6 +177,8 @@ class ZoteroReader:
         query: str,
         collection: str | None = None,
         item_type: str | None = None,
+        sort: str | None = None,
+        direction: str = "desc",
         limit: int = 50,
         offset: int = 0,
     ) -> SearchResult:
@@ -268,7 +270,45 @@ class ZoteroReader:
 
         # Resolve items in batch
         total = len(item_ids)
-        target_ids = sorted(item_ids)[offset : offset + limit]
+
+        if sort and item_ids:
+            dir_sql = "DESC" if direction == "desc" else "ASC"
+            ph = ",".join("?" * len(item_ids))
+            id_list = list(item_ids)
+
+            if sort in ("dateAdded", "dateModified"):
+                rows = conn.execute(
+                    f"SELECT itemID FROM items WHERE itemID IN ({ph}) ORDER BY {sort} {dir_sql} LIMIT ? OFFSET ?",
+                    (*id_list, limit, offset),
+                ).fetchall()
+                target_ids = [r["itemID"] for r in rows]
+            elif sort == "title":
+                title_field = conn.execute("SELECT fieldID FROM fields WHERE fieldName = 'title'").fetchone()
+                fid = title_field["fieldID"] if title_field else 4
+                rows = conn.execute(
+                    f"SELECT i.itemID FROM items i "
+                    f"LEFT JOIN itemData id_t ON i.itemID = id_t.itemID AND id_t.fieldID = ? "
+                    f"LEFT JOIN itemDataValues iv_t ON id_t.valueID = iv_t.valueID "
+                    f"WHERE i.itemID IN ({ph}) "
+                    f"ORDER BY COALESCE(iv_t.value, '') COLLATE NOCASE {dir_sql} LIMIT ? OFFSET ?",
+                    (fid, *id_list, limit, offset),
+                ).fetchall()
+                target_ids = [r["itemID"] for r in rows]
+            elif sort == "creator":
+                rows = conn.execute(
+                    f"SELECT i.itemID FROM items i "
+                    f"LEFT JOIN itemCreators ic ON i.itemID = ic.itemID AND ic.orderIndex = 0 "
+                    f"LEFT JOIN creators c ON ic.creatorID = c.creatorID "
+                    f"WHERE i.itemID IN ({ph}) "
+                    f"ORDER BY COALESCE(c.lastName, '') COLLATE NOCASE {dir_sql} LIMIT ? OFFSET ?",
+                    (*id_list, limit, offset),
+                ).fetchall()
+                target_ids = [r["itemID"] for r in rows]
+            else:
+                target_ids = sorted(item_ids)[offset : offset + limit]
+        else:
+            target_ids = sorted(item_ids)[offset : offset + limit]
+
         items = self._get_items_batch(conn, target_ids) if target_ids else []
 
         return SearchResult(items=items, total=total, query=query)

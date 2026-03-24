@@ -60,3 +60,49 @@ class TestItemTypeFilter:
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert all(i["item_type"] == "journalArticle" for i in data)
+
+
+class TestSortOrder:
+    def test_search_sort_by_date_added_desc(self):
+        result = _invoke(["search", "", "--sort", "dateAdded", "--direction", "desc"], json_output=True)
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        dates = [i["date_added"] for i in data]
+        assert dates == sorted(dates, reverse=True)
+
+    def test_search_sort_by_date_added_asc(self):
+        result = _invoke(["search", "", "--sort", "dateAdded", "--direction", "asc"], json_output=True)
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        dates = [i["date_added"] for i in data]
+        assert dates == sorted(dates)
+
+    def test_search_sort_by_title(self):
+        result = _invoke(["search", "", "--sort", "title", "--direction", "asc"], json_output=True)
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        titles = [i["title"] for i in data]
+        assert titles == sorted(titles, key=str.lower)
+
+    def test_search_sort_by_date_modified(self):
+        result = _invoke(["search", "", "--sort", "dateModified", "--direction", "desc"], json_output=True)
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        dates = [i["date_modified"] for i in data]
+        assert dates == sorted(dates, reverse=True)
+
+    def test_list_sort_by_date_added(self):
+        result = _invoke(["list", "--sort", "dateAdded", "--direction", "desc"], json_output=True)
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        dates = [i["date_added"] for i in data]
+        assert dates == sorted(dates, reverse=True)
+
+    def test_reader_search_sort(self):
+        reader = ZoteroReader(FIXTURES_DIR / "zotero.sqlite")
+        try:
+            result = reader.search("", sort="dateAdded", direction="desc")
+            dates = [i.date_added for i in result.items]
+            assert dates == sorted(dates, reverse=True)
+        finally:
+            reader.close()
