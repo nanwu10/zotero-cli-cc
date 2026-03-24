@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] - 2026-03-24
+
+### Added
+- `zot search --type journalArticle` — filter search/list results by item type
+- `zot search --sort dateAdded --direction desc` — sort results by date, title, or creator
+- `zot recent --days 7` — show recently added or modified items
+- `zot update KEY --title/--date/--field` — update item metadata via Zotero API
+- `zot pdf KEY --annotations` — extract PDF annotations (highlights, notes, comments)
+- `--detail full` now shows journal, volume, issue, pages, ISSN, publisher, citation key
+- `summarize` now shows URL, tags, source info, abstract, and notes
+- All 5 new features available as MCP tools (`search`, `list_items`, `recent`, `update`, `annotations`)
+- 37 new tests (271 total)
+
+### Fixed
+- `--detail full` output was identical to standard detail level
+- `summarize` command only showed basic metadata without abstract or source info
+
 ## [0.1.3] - 2026-03-23
 
 ### Added

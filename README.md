@@ -59,6 +59,14 @@ pipx install zotero-cli-cc
 pip install zotero-cli-cc
 ```
 
+升级到最新版本：
+
+```bash
+uv tool upgrade zotero-cli-cc    # uv
+pipx upgrade zotero-cli-cc       # pipx
+pip install -U zotero-cli-cc     # pip
+```
+
 ## 配置
 
 ```bash
