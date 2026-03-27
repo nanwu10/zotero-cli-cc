@@ -279,16 +279,9 @@ class ZoteroReader:
                 col_item_ids = {r["itemID"] for r in col_items}
                 item_ids &= col_item_ids
             else:
-                available = conn.execute(
-                    "SELECT collectionName FROM collections WHERE libraryID = ? ORDER BY collectionName",
-                    (self._library_id,),
-                ).fetchall()
-                names = [r["collectionName"] for r in available]
-                if names:
-                    hint = "Available collections: " + ", ".join(names)
-                else:
-                    hint = "No collections found in this library."
-                raise ValueError(f"Collection '{collection}' not found. {hint}")
+                raise ValueError(
+                    f"Collection '{collection}' not found. Use 'zot collection list' to see available names."
+                )
 
         # Filter by item type
         if item_type:
