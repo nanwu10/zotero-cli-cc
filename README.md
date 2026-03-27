@@ -376,7 +376,6 @@ graph TD
 ### Distribution
 
 - [x] `pipx` 安装说明
-- [ ] Homebrew formula
 - [x] GitHub Releases：附带 changelog（v0.1.1, v0.1.2）
 - [x] README 徽章：PyPI 版本、CI 状态、Python 版本、License
 
