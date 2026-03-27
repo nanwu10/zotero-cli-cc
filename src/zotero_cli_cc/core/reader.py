@@ -592,6 +592,66 @@ class ZoteroReader:
                 return att
         return None
 
+    def get_arxiv_preprints(
+        self,
+        collection: str | None = None,
+        limit: int = 200,
+    ) -> list[Item]:
+        """Find preprint items (arXiv, bioRxiv, medRxiv) by URL, DOI, extra, or itemType."""
+        conn = self._connect()
+        excl_sql, excl_params = self._excluded_filter()
+        lib_sql, lib_params = self._library_filter()
+
+        # Find items with arXiv or bioRxiv/medRxiv references in URL, DOI, or extra fields
+        rows = conn.execute(
+            "SELECT DISTINCT id.itemID FROM itemData id "
+            "JOIN fields f ON id.fieldID = f.fieldID "
+            "JOIN itemDataValues iv ON id.valueID = iv.valueID "
+            "JOIN items i ON id.itemID = i.itemID "
+            f"WHERE f.fieldName IN ('url', 'DOI', 'extra') "
+            f"AND (iv.value LIKE '%arxiv%' OR iv.value LIKE '%biorxiv%' OR iv.value LIKE '%medrxiv%' "
+            f"OR iv.value LIKE '%10.1101/%') "
+            f"AND i.itemTypeID {excl_sql} {lib_sql}",
+            (*excl_params, *lib_params),
+        ).fetchall()
+        item_ids = {r["itemID"] for r in rows}
+
+        # Also find all items with itemType = preprint
+        preprint_type = conn.execute(
+            "SELECT itemTypeID FROM itemTypes WHERE typeName = 'preprint'"
+        ).fetchone()
+        if preprint_type:
+            rows = conn.execute(
+                f"SELECT i.itemID FROM items i "
+                f"WHERE i.itemTypeID = ? {lib_sql}",
+                (preprint_type["itemTypeID"], *lib_params),
+            ).fetchall()
+            for r in rows:
+                item_ids.add(r["itemID"])
+
+        if not item_ids:
+            return []
+
+        # Filter by collection if specified
+        if collection:
+            col_row = conn.execute(
+                "SELECT collectionID FROM collections WHERE libraryID = ? AND (key = ? OR collectionName = ?)",
+                (self._library_id, collection, collection),
+            ).fetchone()
+            if col_row:
+                col_items = conn.execute(
+                    "SELECT itemID FROM collectionItems WHERE collectionID = ?",
+                    (col_row["collectionID"],),
+                ).fetchall()
+                item_ids &= {r["itemID"] for r in col_items}
+            else:
+                raise ValueError(
+                    f"Collection '{collection}' not found. Use 'zot collection list' to see available names."
+                )
+
+        target_ids = sorted(item_ids)[:limit]
+        return self._get_items_batch(conn, target_ids) if target_ids else []
+
     def get_stats(self) -> dict:
         """Return library statistics."""
         conn = self._connect()

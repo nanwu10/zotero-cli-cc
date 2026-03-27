@@ -29,6 +29,7 @@ from zotero_cli_cc.commands.summarize_all import summarize_all_cmd
 from zotero_cli_cc.commands.tag import tag_cmd
 from zotero_cli_cc.commands.trash import trash_group
 from zotero_cli_cc.commands.update import update_cmd
+from zotero_cli_cc.commands.update_status import update_status_cmd
 
 
 @click.group()
@@ -107,3 +108,4 @@ main.add_command(update_cmd, "update")
 main.add_command(trash_group, "trash")
 main.add_command(duplicates_cmd, "duplicates")
 main.add_command(attach_cmd, "attach")
+main.add_command(update_status_cmd, "update-status")

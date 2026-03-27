@@ -48,6 +48,7 @@ class AppConfig:
     data_dir: str = ""
     library_id: str = ""
     api_key: str = ""
+    semantic_scholar_api_key: str = ""
     default_format: str = "table"
     default_limit: int = 50
     default_export_style: str = "bibtex"
@@ -75,6 +76,7 @@ def load_config(path: Path | None = None, profile: str | None = None) -> AppConf
                 data_dir=p.get("data_dir", ""),
                 library_id=p.get("library_id", ""),
                 api_key=p.get("api_key", ""),
+                semantic_scholar_api_key=p.get("semantic_scholar_api_key", ""),
                 default_format=output.get("default_format", "table"),
                 default_limit=output.get("limit", 50),
                 default_export_style=export.get("default_style", "bibtex"),
@@ -88,6 +90,7 @@ def load_config(path: Path | None = None, profile: str | None = None) -> AppConf
         data_dir=zotero.get("data_dir", ""),
         library_id=zotero.get("library_id", ""),
         api_key=zotero.get("api_key", ""),
+        semantic_scholar_api_key=zotero.get("semantic_scholar_api_key", ""),
         default_format=output.get("default_format", "table"),
         default_limit=output.get("limit", 50),
         default_export_style=export.get("default_style", "bibtex"),
@@ -122,6 +125,7 @@ def save_config(config: AppConfig, path: Path | None = None) -> None:
         f"data_dir = '{config.data_dir}'",
         f"library_id = '{config.library_id}'",
         f"api_key = '{config.api_key}'",
+        f"semantic_scholar_api_key = '{config.semantic_scholar_api_key}'",
         "",
         "[output]",
         f"default_format = '{config.default_format}'",
