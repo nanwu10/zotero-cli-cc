@@ -1,7 +1,7 @@
 ---
 name: zotero-cli
 description: "Use when user mentions papers, references, citations, Zotero, literature, bibliography, or needs to search/read/export academic papers. Routes between zot (fast local SQLite) and rak (semantic/hybrid search) automatically."
-version: 0.3.0
+version: 0.4.0
 ---
 
 # Zotero CLI Skill for Claude Code
@@ -29,9 +29,16 @@ Two complementary tools for Zotero:
 | Formatted citation to clipboard | `zot cite KEY --style apa` | APA/Nature/Vancouver |
 | Batch import DOIs/URLs | `zot add --from-file file.txt` | One per line |
 | Add/delete/tag/note | `zot ...` | All write ops |
+| Update item metadata | `zot update KEY --title/--field` | Web API write |
+| Upload attachment | `zot attach KEY --file paper.pdf` | Web API write |
+| Check preprint pub status | `zot update-status --limit 20` | Semantic Scholar API |
+| Find duplicates | `zot --json duplicates` | Local SQLite |
+| Recently added items | `zot --json recent --days 7` | Local SQLite |
+| Trash management | `zot --json trash list` | Local SQLite |
 | PDF full text extraction | `zot --json pdf KEY` | Local file access |
 | Library stats | `zot --json stats` | Local aggregation |
 | Open PDF/URL | `zot open KEY` or `zot open --url KEY` | System open |
+| Group library access | `zot --library group:123 search "query"` | All commands |
 | Ask question about papers | `rak ask "question" --hybrid` | Needs RAG pipeline |
 
 **Rule of thumb**: Use `zot` for metadata lookup and all CRUD. Use `rak` for any search that involves paper content, semantic meaning, or Q&A. When in doubt about search, prefer `rak --hybrid` — it covers both keyword and semantic matching.
@@ -82,7 +89,11 @@ zot cite ITEMKEY --style vancouver    # Vancouver
 zot add --doi "10.1038/s41586-023-06139-9"
 zot add --url "https://arxiv.org/abs/2301.00001"
 zot add --from-file dois.txt              # Batch import (one DOI/URL per line)
+zot add --pdf paper.pdf                   # Add from local PDF (auto-extract DOI)
 zot --no-interaction delete ITEMKEY
+zot update ITEMKEY --title "New Title"
+zot update ITEMKEY --field volume=42 --field pages=1-10
+zot attach ITEMKEY --file supplement.pdf
 ```
 
 ### Collections
@@ -96,11 +107,32 @@ zot collection rename COLLECTIONKEY "New Name"
 zot collection delete COLLECTIONKEY
 ```
 
+### Preprint Status Check
+
+```bash
+zot update-status                          # Check all arXiv/bioRxiv preprints (dry-run)
+zot update-status --apply                  # Actually update Zotero metadata
+zot update-status ITEMKEY                  # Check a single item
+zot update-status --collection "NLP" --limit 20
+```
+
+### Duplicates, Recent & Trash
+
+```bash
+zot --json duplicates                # Find duplicates (DOI + title matching)
+zot --json duplicates --by title     # Title-only matching
+zot --json recent --days 7           # Recently added items
+zot --json recent --sort dateModified
+zot --json trash list                # View trashed items
+zot trash restore ITEMKEY            # Restore from trash
+```
+
 ### PDF & Summarization
 
 ```bash
 zot --json pdf ITEMKEY
 zot pdf ITEMKEY --pages 1-5
+zot pdf ITEMKEY --annotations        # Extract PDF annotations
 zot --json summarize ITEMKEY
 zot summarize-all
 ```
@@ -111,6 +143,13 @@ zot summarize-all
 zot --json stats                     # Library statistics
 zot open ITEMKEY                     # Open PDF in system viewer
 zot open --url ITEMKEY               # Open URL/DOI in browser
+```
+
+### Group Library
+
+```bash
+zot --library group:12345 search "query"    # Search in group library
+zot --library group:12345 list              # List group library items
 ```
 
 ### Configuration
@@ -243,7 +282,9 @@ rak ask "Compare attention mechanisms in transformer variants" --hybrid --contex
 
 - **`zot` read operations** work offline with zero config
 - **`zot` write operations** need API credentials via `zot config init`
+- **`zot update-status`** uses Semantic Scholar API; set `S2_API_KEY` env var for faster rate limits
 - **`rak`** requires `rak index` before first search
 - **PDF cache** — `zot` caches PDF extractions automatically
 - **Item keys** are 8-character alphanumeric strings like `K853PGUG`
+- **Group libraries** — use `--library group:<id>` with any command
 - **After writes** — Zotero desktop needs to sync, then `rak index` to update search index
