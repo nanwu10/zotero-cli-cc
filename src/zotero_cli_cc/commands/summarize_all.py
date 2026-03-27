@@ -12,20 +12,21 @@ from zotero_cli_cc.core.reader import ZoteroReader
 
 @click.command("summarize-all")
 @click.option("--offset", default=0, help="Skip first N items (for pagination)")
+@click.option("--limit", default=None, type=int, help="Limit results (overrides global --limit)")
 @click.pass_context
-def summarize_all_cmd(ctx: click.Context, offset: int) -> None:
+def summarize_all_cmd(ctx: click.Context, offset: int, limit: int | None) -> None:
     """Export all items with key, title, and abstract for AI classification.
 
     \b
     Examples:
       zot summarize-all                   Export all items
-      zot --limit 100 summarize-all       First 100 items
+      zot summarize-all --limit 100       First 100 items
       zot summarize-all --offset 100      Skip first 100 (pagination)
     """
     cfg = load_config(profile=ctx.obj.get("profile"))
     data_dir = get_data_dir(cfg)
     db_path = data_dir / "zotero.sqlite"
-    limit = ctx.obj.get("limit", 10000)
+    limit = limit if limit is not None else ctx.obj.get("limit", 10000)
     library_id = resolve_library_id(db_path, ctx.obj)
     reader = ZoteroReader(db_path, library_id=library_id)
     try:

@@ -16,8 +16,9 @@ from zotero_cli_cc.formatter import format_duplicates
     help="Detection strategy (default: both)",
 )
 @click.option("--threshold", default=0.85, type=float, help="Title similarity threshold (default: 0.85)")
+@click.option("--limit", default=None, type=int, help="Limit results (overrides global --limit)")
 @click.pass_context
-def duplicates_cmd(ctx: click.Context, strategy: str, threshold: float) -> None:
+def duplicates_cmd(ctx: click.Context, strategy: str, threshold: float, limit: int | None) -> None:
     """Find potential duplicate items in the library.
 
     \b
@@ -33,7 +34,7 @@ def duplicates_cmd(ctx: click.Context, strategy: str, threshold: float) -> None:
     library_id = resolve_library_id(db_path, ctx.obj)
     reader = ZoteroReader(db_path, library_id=library_id)
     try:
-        limit = ctx.obj.get("limit", cfg.default_limit)
+        limit = limit if limit is not None else ctx.obj.get("limit", cfg.default_limit)
         groups = reader.find_duplicates(strategy=strategy, threshold=threshold, limit=limit)
         if not groups:
             if ctx.obj.get("json"):

@@ -36,6 +36,17 @@ class TestSearch:
         data = json.loads(result.output)
         assert all(i["key"] == "ATTN001" for i in data)
 
+    def test_search_with_command_level_limit(self, test_db_path):
+        """--limit after subcommand should work (issue #7)."""
+        result = _invoke(["search", "", "--limit", "1"], test_db_path, json_output=True)
+        data = json.loads(result.output)
+        assert len(data) == 1
+
+    def test_search_collection_not_found(self, test_db_path):
+        """Unknown collection should show error with available names (issue #8)."""
+        result = _invoke(["search", "test", "--collection", "NonExistent"], test_db_path)
+        assert result.exit_code != 0
+
 
 class TestList:
     def test_list_all(self, test_db_path):
@@ -52,6 +63,18 @@ class TestList:
         result = _invoke(["--limit", "1", "list"], test_db_path, json_output=True)
         data = json.loads(result.output)
         assert len(data) == 1
+
+    def test_list_with_command_level_limit(self, test_db_path):
+        """--limit after subcommand should work (issue #7)."""
+        result = _invoke(["list", "--limit", "1"], test_db_path, json_output=True)
+        data = json.loads(result.output)
+        assert len(data) == 1
+
+    def test_list_collection_not_found(self, test_db_path):
+        """Unknown collection should show error with available names (issue #8)."""
+        result = _invoke(["list", "--collection", "NonExistent"], test_db_path)
+        assert result.exit_code != 0
+        assert "Collection 'NonExistent' not found" in result.output or "Collection 'NonExistent' not found" in (result.output + (result.stderr or ""))
 
 
 class TestRead:

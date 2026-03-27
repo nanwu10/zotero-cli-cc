@@ -9,7 +9,7 @@ from zotero_cli_cc.formatter import format_items
 
 @click.command("search")
 @click.argument("query")
-@click.option("--collection", default=None, help="Filter by collection name")
+@click.option("--collection", default=None, help="Filter by Zotero collection (folder) name")
 @click.option("--type", "item_type", default=None, help="Filter by item type (e.g. journalArticle, book, preprint)")
 @click.option(
     "--sort",
@@ -23,6 +23,7 @@ from zotero_cli_cc.formatter import format_items
     type=click.Choice(["asc", "desc"]),
     help="Sort direction (default: desc)",
 )
+@click.option("--limit", default=None, type=int, help="Limit results (overrides global --limit)")
 @click.pass_context
 def search_cmd(
     ctx: click.Context,
@@ -31,6 +32,7 @@ def search_cmd(
     item_type: str | None,
     sort: str | None,
     direction: str,
+    limit: int | None,
 ) -> None:
     """Search the Zotero library by title, author, tag, or full text.
 
@@ -38,8 +40,8 @@ def search_cmd(
     Examples:
       zot search "transformer attention"
       zot search "BERT" --collection "NLP"
+      zot search "GAN" --limit 5
       zot --json search "single cell"
-      zot --detail minimal search "GAN"
     """
     cfg = load_config(profile=ctx.obj.get("profile"))
     data_dir = get_data_dir(cfg)
@@ -47,10 +49,14 @@ def search_cmd(
     library_id = resolve_library_id(db_path, ctx.obj)
     reader = ZoteroReader(db_path, library_id=library_id)
     try:
-        limit = ctx.obj.get("limit", cfg.default_limit)
-        result = reader.search(
-            query, collection=collection, item_type=item_type, sort=sort, direction=direction, limit=limit
-        )
+        limit = limit if limit is not None else ctx.obj.get("limit", cfg.default_limit)
+        try:
+            result = reader.search(
+                query, collection=collection, item_type=item_type, sort=sort, direction=direction, limit=limit
+            )
+        except ValueError as e:
+            click.echo(f"Error: {e}", err=True)
+            raise SystemExit(1)
         if not result.items:
             if ctx.obj.get("json"):
                 click.echo("[]")

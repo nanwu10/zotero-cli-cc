@@ -8,7 +8,7 @@ from zotero_cli_cc.formatter import format_items
 
 
 @click.command("list")
-@click.option("--collection", default=None, help="Filter by collection name")
+@click.option("--collection", default=None, help="Filter by Zotero collection (folder) name")
 @click.option("--type", "item_type", default=None, help="Filter by item type (e.g. journalArticle, book, preprint)")
 @click.option(
     "--sort",
@@ -22,6 +22,7 @@ from zotero_cli_cc.formatter import format_items
     type=click.Choice(["asc", "desc"]),
     help="Sort direction (default: desc)",
 )
+@click.option("--limit", default=None, type=int, help="Limit results (overrides global --limit)")
 @click.pass_context
 def list_cmd(
     ctx: click.Context,
@@ -29,14 +30,15 @@ def list_cmd(
     item_type: str | None,
     sort: str | None,
     direction: str,
+    limit: int | None,
 ) -> None:
     """List items in the Zotero library.
 
     \b
     Examples:
       zot list
-      zot list --collection "Machine Learning"
-      zot --limit 10 list
+      zot list --collection "Machine Learning" --limit 10
+      zot list --type journalArticle
       zot --json list --collection "NLP"
     """
     cfg = load_config(profile=ctx.obj.get("profile"))
@@ -45,10 +47,14 @@ def list_cmd(
     library_id = resolve_library_id(db_path, ctx.obj)
     reader = ZoteroReader(db_path, library_id=library_id)
     try:
-        limit = ctx.obj.get("limit", cfg.default_limit)
-        result = reader.search(
-            "", collection=collection, item_type=item_type, sort=sort, direction=direction, limit=limit
-        )
+        limit = limit if limit is not None else ctx.obj.get("limit", cfg.default_limit)
+        try:
+            result = reader.search(
+                "", collection=collection, item_type=item_type, sort=sort, direction=direction, limit=limit
+            )
+        except ValueError as e:
+            click.echo(f"Error: {e}", err=True)
+            raise SystemExit(1)
         detail = ctx.obj.get("detail", "standard")
         click.echo(format_items(result.items, output_json=ctx.obj.get("json", False), detail=detail))
     finally:

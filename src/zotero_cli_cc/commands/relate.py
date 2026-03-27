@@ -10,8 +10,9 @@ from zotero_cli_cc.models import ErrorInfo
 
 @click.command("relate")
 @click.argument("key")
+@click.option("--limit", default=None, type=int, help="Limit results (overrides global --limit)")
 @click.pass_context
-def relate_cmd(ctx: click.Context, key: str) -> None:
+def relate_cmd(ctx: click.Context, key: str, limit: int | None) -> None:
     """Find related items via shared tags, collections, or explicit relations.
 
     \b
@@ -26,7 +27,7 @@ def relate_cmd(ctx: click.Context, key: str) -> None:
     library_id = resolve_library_id(db_path, ctx.obj)
     reader = ZoteroReader(db_path, library_id=library_id)
     try:
-        limit = ctx.obj.get("limit", 20)
+        limit = limit if limit is not None else ctx.obj.get("limit", 20)
         items = reader.get_related_items(key, limit=limit)
         if not items:
             click.echo(

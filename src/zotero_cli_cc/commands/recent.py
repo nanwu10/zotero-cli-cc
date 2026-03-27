@@ -12,15 +12,16 @@ from zotero_cli_cc.formatter import format_items
 @click.command("recent")
 @click.option("--days", default=7, type=int, help="Number of days to look back (default: 7)")
 @click.option("--modified", is_flag=True, help="Sort by date modified instead of date added")
+@click.option("--limit", default=None, type=int, help="Limit results (overrides global --limit)")
 @click.pass_context
-def recent_cmd(ctx: click.Context, days: int, modified: bool) -> None:
+def recent_cmd(ctx: click.Context, days: int, modified: bool, limit: int | None) -> None:
     """Show recently added or modified items.
 
     \b
     Examples:
       zot recent                    Items added in last 7 days
       zot recent --days 30          Items added in last 30 days
-      zot recent --modified         Items modified recently
+      zot recent --limit 5          Limit to 5 results
       zot --json recent --days 14   JSON output
     """
     cfg = load_config(profile=ctx.obj.get("profile"))
@@ -29,7 +30,7 @@ def recent_cmd(ctx: click.Context, days: int, modified: bool) -> None:
     library_id = resolve_library_id(db_path, ctx.obj)
     reader = ZoteroReader(db_path, library_id=library_id)
     try:
-        limit = ctx.obj.get("limit", cfg.default_limit)
+        limit = limit if limit is not None else ctx.obj.get("limit", cfg.default_limit)
         sort_field = "dateModified" if modified else "dateAdded"
         since = datetime.now(timezone.utc) - timedelta(days=days)
         since_str = since.strftime("%Y-%m-%d %H:%M:%S")

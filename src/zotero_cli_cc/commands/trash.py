@@ -18,13 +18,15 @@ def trash_group() -> None:
 
 
 @trash_group.command("list")
+@click.option("--limit", default=None, type=int, help="Limit results (overrides global --limit)")
 @click.pass_context
-def trash_list_cmd(ctx: click.Context) -> None:
+def trash_list_cmd(ctx: click.Context, limit: int | None) -> None:
     """List items in the trash.
 
     \b
     Examples:
       zot trash list
+      zot trash list --limit 10
       zot --json trash list
     """
     cfg = load_config(profile=ctx.obj.get("profile"))
@@ -33,7 +35,7 @@ def trash_list_cmd(ctx: click.Context) -> None:
     library_id = resolve_library_id(db_path, ctx.obj)
     reader = ZoteroReader(db_path, library_id=library_id)
     try:
-        limit = ctx.obj.get("limit", cfg.default_limit)
+        limit = limit if limit is not None else ctx.obj.get("limit", cfg.default_limit)
         items = reader.get_trash_items(limit=limit)
         if not items:
             if ctx.obj.get("json"):
