@@ -5,7 +5,6 @@ import re
 import shutil
 import sqlite3
 import tempfile
-import time
 import warnings
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -20,8 +19,6 @@ from zotero_cli_cc.models import (
     SearchResult,
 )
 
-MAX_RETRIES = 3
-RETRY_DELAY = 1.0
 
 # Excluded type names (looked up dynamically per database)
 _EXCLUDED_TYPE_NAMES = ("attachment", "note", "annotation")
@@ -50,27 +47,21 @@ class ZoteroReader:
                 f"  Run 'zot config show' to check your configuration.\n"
                 f"  Run 'zot config init --data-dir <path>' to set the correct data directory."
             )
-        # Use forward slashes in URI for Windows compatibility (RFC 3986)
+        # immutable=1 skips WAL, avoids lock contention with running Zotero desktop
         uri_path = self._db_path.as_posix()
-        for attempt in range(MAX_RETRIES):
-            try:
-                conn = sqlite3.connect(
-                    f"file:{uri_path}?mode=ro&immutable=1",
-                    uri=True,
-                    timeout=5.0,
-                )
-                conn.row_factory = sqlite3.Row
-                # Test that we can actually query
-                conn.execute("SELECT 1 FROM items LIMIT 1")
-                self._conn = conn
-                return conn
-            except sqlite3.OperationalError:
-                if attempt < MAX_RETRIES - 1:
-                    time.sleep(RETRY_DELAY)
-                    continue
-                # Fallback: copy DB to temp file
-                return self._connect_from_copy()
-        raise sqlite3.OperationalError(f"Failed to connect to {self._db_path} after {MAX_RETRIES} retries")
+        try:
+            conn = sqlite3.connect(
+                f"file:{uri_path}?mode=ro&immutable=1",
+                uri=True,
+                timeout=5.0,
+            )
+            conn.row_factory = sqlite3.Row
+            conn.execute("SELECT 1 FROM items LIMIT 1")
+            self._conn = conn
+            return conn
+        except sqlite3.OperationalError:
+            # Fallback: copy DB to temp file (e.g. if immutable read hits corruption)
+            return self._connect_from_copy()
 
     def _get_excluded_ids(self) -> tuple[int, ...]:
         """Look up excluded type IDs by name (cached after first call)."""
