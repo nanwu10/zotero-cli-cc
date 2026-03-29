@@ -55,7 +55,7 @@ class ZoteroReader:
         for attempt in range(MAX_RETRIES):
             try:
                 conn = sqlite3.connect(
-                    f"file:{uri_path}?mode=ro",
+                    f"file:{uri_path}?mode=ro&immutable=1",
                     uri=True,
                     timeout=5.0,
                 )

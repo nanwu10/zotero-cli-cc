@@ -572,6 +572,11 @@ def workspace_index(ctx: click.Context, name: str, force: bool) -> None:
             click.echo(f"Index for '{name}' is up to date ({len(already_indexed)} item(s) indexed).")
             return
 
+        from zotero_cli_cc.core.pdf_cache import PdfCache
+
+        md_cache_path = workspaces_dir() / ".md_cache.sqlite"
+        md_cache = PdfCache(db_path=md_cache_path)
+
         t0 = time.monotonic()
         total_chunks = 0
         all_chunk_ids: list[int] = []
@@ -599,7 +604,7 @@ def workspace_index(ctx: click.Context, name: str, force: bool) -> None:
                 pdf_path = data_dir / "storage" / att.key / att.filename
                 if pdf_path.exists():
                     try:
-                        pdf_text = convert_pdf_to_text(pdf_path)
+                        pdf_text = convert_pdf_to_text(pdf_path, cache=md_cache)
                         chunks = chunk_text(pdf_text, item.title)
                         for chunk_content in chunks:
                             cid = idx.insert_chunk(ws_item.key, "pdf", chunk_content)
@@ -643,6 +648,7 @@ def workspace_index(ctx: click.Context, name: str, force: bool) -> None:
             f"in {elapsed:.1f}s [{mode_label}]"
         )
     finally:
+        md_cache.close()
         idx.close()
         reader.close()
 

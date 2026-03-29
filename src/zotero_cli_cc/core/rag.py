@@ -86,13 +86,21 @@ def chunk_text(text: str, paper_title: str, max_tokens: int = 500, overlap: int 
     return chunks if chunks else [f"[{paper_title}] {text.strip()}"]
 
 
-def convert_pdf_to_text(pdf_path) -> str:
+def convert_pdf_to_text(pdf_path, cache=None) -> str:
+    """Convert PDF to text. Uses cache if provided, pymupdf4llm if available, else plain extraction."""
+    if cache is not None:
+        cached = cache.get(pdf_path)
+        if cached is not None:
+            return cached
     try:
         import pymupdf4llm
-        return pymupdf4llm.to_markdown(str(pdf_path))
+        text = pymupdf4llm.to_markdown(str(pdf_path))
     except ImportError:
         from zotero_cli_cc.core.pdf_extractor import extract_text_from_pdf
-        return extract_text_from_pdf(pdf_path)
+        text = extract_text_from_pdf(pdf_path)
+    if cache is not None:
+        cache.put(pdf_path, text)
+    return text
 
 
 def bm25_score_chunks(index: RagIndex, query: str, k1: float = 1.5, b: float = 0.75) -> list[tuple[int, float, dict]]:
