@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from zotero_cli_cc.core.semantic_scholar import (
-    PreprintInfo,
     PublicationStatus,
     extract_arxiv_id,
     extract_preprint_info,

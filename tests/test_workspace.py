@@ -19,7 +19,6 @@ from zotero_cli_cc.core.workspace import (
     save_workspace,
     validate_name,
     workspace_exists,
-    workspaces_dir,
 )
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"

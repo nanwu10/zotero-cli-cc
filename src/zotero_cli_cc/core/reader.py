@@ -19,7 +19,6 @@ from zotero_cli_cc.models import (
     SearchResult,
 )
 
-
 # Excluded type names (looked up dynamically per database)
 _EXCLUDED_TYPE_NAMES = ("attachment", "note", "annotation")
 

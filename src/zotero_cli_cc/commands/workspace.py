@@ -21,6 +21,7 @@ from zotero_cli_cc.core.rag import (
 from zotero_cli_cc.core.rag_index import RagIndex
 from zotero_cli_cc.core.reader import ZoteroReader
 from zotero_cli_cc.core.workspace import (
+    Workspace,
     delete_workspace,
     list_workspaces,
     load_workspace,
@@ -28,7 +29,6 @@ from zotero_cli_cc.core.workspace import (
     validate_name,
     workspace_exists,
     workspaces_dir,
-    Workspace,
 )
 from zotero_cli_cc.formatter import format_error, format_items
 from zotero_cli_cc.models import ErrorInfo, Item

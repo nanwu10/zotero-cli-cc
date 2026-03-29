@@ -3,17 +3,22 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from zotero_cli_cc.core.rag_index import RagIndex
-from zotero_cli_cc.core.rag import (
-    tokenize, chunk_text, build_metadata_chunk,
-    compute_term_frequencies, bm25_score_chunks,
-    cosine_similarity, reciprocal_rank_fusion, embed_texts,
-)
 from zotero_cli_cc.config import EmbeddingConfig
+from zotero_cli_cc.core.rag import (
+    bm25_score_chunks,
+    build_metadata_chunk,
+    chunk_text,
+    compute_term_frequencies,
+    cosine_similarity,
+    embed_texts,
+    reciprocal_rank_fusion,
+    tokenize,
+)
+from zotero_cli_cc.core.rag_index import RagIndex
 
 
 class TestRagIndex:
