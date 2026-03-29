@@ -1,6 +1,6 @@
 [project]
 name = "zotero-cli-cc"
-version = "0.2.0"
+version = "0.2.1"
 description = "Zotero CLI for Claude Code — SQLite reads + Web API writes"
 license = "CC-BY-NC-4.0"
 requires-python = ">=3.10"
@@ -9,7 +9,6 @@ dependencies = [
     "pyzotero>=1.5",
     "pymupdf>=1.24",
     "rich>=13.0",
-    "platformdirs>=4.0",
     "tomli>=2.0; python_version < '3.11'",
     "markdownify>=1.2.2",
 ]
