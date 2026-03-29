@@ -170,14 +170,10 @@ def embed_texts(texts: list[str], config: EmbeddingConfig) -> list[list[float]] 
     for i in range(0, len(texts), batch_size):
         batch = texts[i : i + batch_size]
         body = json_mod.dumps({"model": config.model, "input": batch}).encode()
-        req = urllib.request.Request(
-            config.url,
-            data=body,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {config.api_key}",
-            },
-        )
+        req = urllib.request.Request(config.url, data=body)
+        req.add_header("Content-Type", "application/json")
+        req.add_header("Authorization", f"Bearer {config.api_key}")
+        req.add_header("User-Agent", "zot-cli/0.2.0")
         with urllib.request.urlopen(req) as resp:
             data = json_mod.loads(resp.read())
         for item in data["data"]:
