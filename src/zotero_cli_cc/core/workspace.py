@@ -6,8 +6,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-from platformdirs import user_config_dir
-
 if sys.version_info >= (3, 11):
     import tomllib
 else:
@@ -20,7 +18,7 @@ _NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 
 def workspaces_dir() -> Path:
-    return Path(user_config_dir("zot")) / "workspaces"
+    return Path.home() / ".config" / "zot" / "workspaces"
 
 
 def validate_name(name: str) -> bool:

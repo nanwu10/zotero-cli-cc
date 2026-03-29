@@ -4,9 +4,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-from platformdirs import user_cache_dir
-
-DEFAULT_CACHE_PATH = Path(user_cache_dir("zot")) / "pdf_cache.sqlite"
+DEFAULT_CACHE_PATH = Path.home() / ".config" / "zot" / "cache" / "pdf_cache.sqlite"
 
 
 class PdfCache:

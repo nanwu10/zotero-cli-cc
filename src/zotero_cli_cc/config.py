@@ -5,8 +5,6 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from platformdirs import user_config_dir
-
 if sys.version_info >= (3, 11):
     import tomllib
 else:
@@ -15,7 +13,7 @@ else:
     except ModuleNotFoundError:
         import tomli as tomllib  # type: ignore[no-redef]
 
-CONFIG_DIR = Path(user_config_dir("zot"))
+CONFIG_DIR = Path.home() / ".config" / "zot"
 CONFIG_FILE = CONFIG_DIR / "config.toml"
 
 
