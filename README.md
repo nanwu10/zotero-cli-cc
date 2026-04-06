@@ -148,7 +148,7 @@ zot mcp serve
 }
 ```
 
-MCP mode provides 17 tools covering search, reading, PDF extraction, note management, tag management, citation export, and more.
+MCP mode provides 45 tools covering search, reading, PDF extraction, note management, tag management, citation export, workspace management with RAG, library statistics, and preprint status checking.
 
 ## Commands
 
@@ -436,7 +436,7 @@ Restart your terminal or `source` the config file to enable tab completions.
 
 ### MCP Server
 
-- [ ] Expand MCP tools: collection management, export, advanced search
+- [x] Expand MCP tools: workspace, cite, stats, update-status (45 tools total)
 - [ ] MCP server documentation / integration guide
 
 ---

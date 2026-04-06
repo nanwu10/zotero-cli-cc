@@ -148,7 +148,7 @@ zot mcp serve
 }
 ```
 
-MCP 模式提供 17 个工具，涵盖搜索、阅读、PDF 提取、笔记管理、标签管理、导出引用等完整功能。
+MCP 模式提供 45 个工具，涵盖搜索、阅读、PDF 提取、笔记管理、标签管理、导出引用���工作区 RAG、库统计、预���本状态检查等完整功能。
 
 ## 命令一览
 
@@ -450,7 +450,7 @@ graph TD
 
 ### MCP Server
 
-- [ ] 扩展 MCP 工具：collection 管理、导出、高级搜索
+- [x] 扩��� MCP 工具：workspace、cite、stats、update-status��共 45 个工具）
 - [ ] MCP 服务器文档 / 集成指南
 
 ---

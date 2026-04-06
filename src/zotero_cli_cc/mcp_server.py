@@ -3,14 +3,26 @@
 from __future__ import annotations
 
 import atexit
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
-from zotero_cli_cc.config import get_data_dir, load_config
+from zotero_cli_cc.config import get_data_dir, load_config, load_embedding_config
 from zotero_cli_cc.core.pdf_cache import PdfCache
 from zotero_cli_cc.core.pdf_extractor import PdfExtractionError, extract_text_from_pdf
 from zotero_cli_cc.core.reader import ZoteroReader
+from zotero_cli_cc.core.workspace import (
+    Workspace,
+    delete_workspace,
+    list_workspaces,
+    load_workspace,
+    save_workspace,
+    validate_name,
+    workspace_exists,
+    workspaces_dir,
+)
 from zotero_cli_cc.core.writer import ZoteroWriteError, ZoteroWriter
 from zotero_cli_cc.models import Collection, Item, Note
 
@@ -557,6 +569,533 @@ def _handle_add_from_pdf(file_path: str, doi_override: str | None = None, librar
 
 
 # ---------------------------------------------------------------------------
+# Workspace handler functions
+# ---------------------------------------------------------------------------
+
+
+def _handle_workspace_new(name: str, description: str = "") -> dict:
+    if not validate_name(name):
+        return {"error": f"Invalid workspace name: '{name}'. Use kebab-case (e.g., llm-safety)."}
+    if workspace_exists(name):
+        return {"error": f"Workspace '{name}' already exists."}
+    ws = Workspace(name=name, created=datetime.now(timezone.utc).isoformat(), description=description)
+    save_workspace(ws)
+    return {"name": name, "created": ws.created}
+
+
+def _handle_workspace_delete(name: str) -> dict:
+    if not workspace_exists(name):
+        return {"error": f"Workspace '{name}' not found."}
+    delete_workspace(name)
+    return {"name": name, "deleted": True}
+
+
+def _handle_workspace_add(name: str, keys: list[str], library: str = "user") -> dict:
+    if not workspace_exists(name):
+        return {"error": f"Workspace '{name}' not found."}
+    reader = _get_reader(library)
+    ws = load_workspace(name)
+    added = []
+    skipped = []
+    not_found = []
+    for key in keys:
+        item = reader.get_item(key)
+        if item is None:
+            not_found.append(key)
+            continue
+        if ws.add_item(key, item.title):
+            added.append(key)
+        else:
+            skipped.append(key)
+    save_workspace(ws)
+    return {"added": added, "skipped": skipped, "not_found": not_found}
+
+
+def _handle_workspace_remove(name: str, keys: list[str]) -> dict:
+    if not workspace_exists(name):
+        return {"error": f"Workspace '{name}' not found."}
+    ws = load_workspace(name)
+    removed = []
+    not_found = []
+    for key in keys:
+        if ws.remove_item(key):
+            removed.append(key)
+        else:
+            not_found.append(key)
+    save_workspace(ws)
+    return {"removed": removed, "not_in_workspace": not_found}
+
+
+def _handle_workspace_list() -> dict:
+    workspaces = list_workspaces()
+    return {
+        "workspaces": [
+            {
+                "name": ws.name,
+                "description": ws.description,
+                "items": len(ws.items),
+                "created": ws.created,
+            }
+            for ws in workspaces
+        ]
+    }
+
+
+def _handle_workspace_show(name: str, limit: int = 50, library: str = "user") -> dict:
+    if not workspace_exists(name):
+        return {"error": f"Workspace '{name}' not found."}
+    ws = load_workspace(name)
+    if not ws.items:
+        return {"name": name, "items": [], "total": 0}
+    reader = _get_reader(library)
+    items = []
+    missing = []
+    for ws_item in ws.items[:limit]:
+        item = reader.get_item(ws_item.key)
+        if item is not None:
+            items.append(_item_to_dict(item))
+        else:
+            missing.append(ws_item.key)
+    return {"name": name, "items": items, "missing": missing, "total": len(ws.items)}
+
+
+def _handle_workspace_export(name: str, fmt: str = "markdown", library: str = "user") -> dict:
+    if not workspace_exists(name):
+        return {"error": f"Workspace '{name}' not found."}
+    ws = load_workspace(name)
+    if not ws.items:
+        return {"error": f"Workspace '{name}' is empty."}
+    reader = _get_reader(library)
+    items = []
+    for ws_item in ws.items:
+        item = reader.get_item(ws_item.key)
+        if item is not None:
+            items.append(item)
+    if not items:
+        return {"error": "No items could be resolved from Zotero library."}
+
+    if fmt == "json":
+        return {"format": "json", "items": [_item_to_dict(i) for i in items]}
+    elif fmt == "bibtex":
+        entries = []
+        for item in items:
+            bib = reader.export_citation(item.key, fmt="bibtex")
+            if bib:
+                entries.append(bib)
+        return {"format": "bibtex", "content": "\n\n".join(entries)}
+    else:
+        # markdown
+        lines = [f"# Workspace: {name}"]
+        desc_part = f" {ws.description}" if ws.description else ""
+        lines.append(f"> {desc_part.strip()} ({len(items)} items)")
+        lines.append("")
+        for i, item in enumerate(items, 1):
+            lines.append("---")
+            lines.append(f"## {i}. {item.title}")
+            authors = ", ".join(c.full_name for c in item.creators[:3])
+            if len(item.creators) > 3:
+                authors += " et al."
+            year = item.date or "N/A"
+            lines.append(f"**Authors:** {authors} | **Year:** {year} | **Key:** {item.key}")
+            if item.tags:
+                lines.append(f"**Tags:** {', '.join(item.tags)}")
+            if item.abstract:
+                lines.append(f"**Abstract:** {item.abstract}")
+            lines.append("")
+        return {"format": "markdown", "content": "\n".join(lines)}
+
+
+def _handle_workspace_import(
+    name: str,
+    collection: str | None = None,
+    tag: str | None = None,
+    search_query: str | None = None,
+    library: str = "user",
+) -> dict:
+    if not workspace_exists(name):
+        return {"error": f"Workspace '{name}' not found."}
+    if not collection and not tag and not search_query:
+        return {"error": "Must specify at least one of collection, tag, or search_query."}
+
+    reader = _get_reader(library)
+    ws = load_workspace(name)
+    items_to_import: list[Item] = []
+
+    if collection:
+        col_key = _resolve_collection_key(reader, collection)
+        if col_key is None:
+            return {"error": f"Collection '{collection}' not found."}
+        items_to_import.extend(reader.get_collection_items(col_key))
+
+    if tag:
+        result = reader.search(tag, limit=500)
+        for item in result.items:
+            if tag.lower() in [t.lower() for t in item.tags]:
+                items_to_import.append(item)
+
+    if search_query:
+        result = reader.search(search_query, limit=500)
+        items_to_import.extend(result.items)
+
+    # Dedup
+    seen: set[str] = set()
+    unique: list[Item] = []
+    for item in items_to_import:
+        if item.key not in seen:
+            seen.add(item.key)
+            unique.append(item)
+
+    added = 0
+    skipped = 0
+    for item in unique:
+        if ws.add_item(item.key, item.title):
+            added += 1
+        else:
+            skipped += 1
+    save_workspace(ws)
+    return {"added": added, "skipped": skipped, "total_found": len(unique)}
+
+
+def _handle_workspace_search(name: str, query: str, limit: int = 50, library: str = "user") -> dict:
+    if not workspace_exists(name):
+        return {"error": f"Workspace '{name}' not found."}
+    ws = load_workspace(name)
+    if not ws.items:
+        return {"items": [], "total": 0}
+    reader = _get_reader(library)
+    query_lower = query.lower()
+    matches = []
+    for ws_item in ws.items:
+        item = reader.get_item(ws_item.key)
+        if item is None:
+            continue
+        searchable = " ".join(
+            filter(
+                None,
+                [
+                    item.title,
+                    " ".join(c.full_name for c in item.creators),
+                    item.abstract or "",
+                    " ".join(item.tags),
+                ],
+            )
+        ).lower()
+        if query_lower in searchable:
+            matches.append(item)
+    return {"items": [_item_to_dict(i) for i in matches[:limit]], "total": len(matches)}
+
+
+def _handle_workspace_index(name: str, force: bool = False, library: str = "user") -> dict:
+    from zotero_cli_cc.core.rag import (
+        build_metadata_chunk,
+        chunk_text,
+        compute_term_frequencies,
+        convert_pdf_to_text,
+        embed_texts,
+        tokenize,
+    )
+    from zotero_cli_cc.core.rag_index import RagIndex
+
+    if not workspace_exists(name):
+        return {"error": f"Workspace '{name}' not found."}
+    ws = load_workspace(name)
+    if not ws.items:
+        return {"error": f"Workspace '{name}' is empty."}
+
+    cfg = load_config()
+    data_dir = get_data_dir(cfg)
+    reader = _get_reader(library)
+
+    idx_path = workspaces_dir() / f"{name}.idx.sqlite"
+    idx = RagIndex(idx_path)
+    md_cache_path = workspaces_dir() / ".md_cache.sqlite"
+    md_cache = PdfCache(db_path=md_cache_path)
+
+    try:
+        if force:
+            idx.clear()
+
+        already_indexed = idx.get_indexed_keys()
+        to_index = [item for item in ws.items if item.key not in already_indexed]
+
+        if not to_index:
+            return {"status": "up_to_date", "indexed": len(already_indexed)}
+
+        t0 = time.monotonic()
+        total_chunks = 0
+        all_chunk_ids: list[int] = []
+        all_chunk_texts: list[str] = []
+
+        for ws_item in to_index:
+            item = reader.get_item(ws_item.key)
+            if item is None:
+                continue
+            authors = ", ".join(c.full_name for c in item.creators)
+            meta_text = build_metadata_chunk(item.title, authors, item.abstract, item.tags)
+            chunk_id = idx.insert_chunk(ws_item.key, "metadata", meta_text)
+            tfs = compute_term_frequencies(tokenize(meta_text))
+            idx.insert_bm25_terms(chunk_id, tfs)
+            all_chunk_ids.append(chunk_id)
+            all_chunk_texts.append(meta_text)
+            total_chunks += 1
+
+            att = reader.get_pdf_attachment(ws_item.key)
+            if att is not None:
+                pdf_path = data_dir / "storage" / att.key / att.filename
+                if pdf_path.exists():
+                    try:
+                        pdf_text = convert_pdf_to_text(pdf_path, cache=md_cache)
+                        chunks = chunk_text(pdf_text, item.title)
+                        for chunk_content in chunks:
+                            cid = idx.insert_chunk(ws_item.key, "pdf", chunk_content)
+                            tfs = compute_term_frequencies(tokenize(chunk_content))
+                            idx.insert_bm25_terms(cid, tfs)
+                            all_chunk_ids.append(cid)
+                            all_chunk_texts.append(chunk_content)
+                            total_chunks += 1
+                    except Exception:
+                        pass
+
+        # Update BM25 statistics
+        all_chunks = idx.get_all_chunks()
+        total_docs = len(all_chunks)
+        avg_doc_len = sum(len(tokenize(c["content"])) for c in all_chunks) / total_docs if total_docs > 0 else 1.0
+        idx.set_meta("total_docs", str(total_docs))
+        idx.set_meta("avg_doc_len", str(avg_doc_len))
+        idx.set_meta("chunk_count", str(total_docs))
+        idx.set_meta("indexed_at", datetime.now(timezone.utc).isoformat())
+
+        mode_label = "bm25"
+        emb_cfg = load_embedding_config()
+        if emb_cfg.is_configured and all_chunk_texts:
+            try:
+                vectors = embed_texts(all_chunk_texts, emb_cfg)
+                if vectors:
+                    for cid, vec in zip(all_chunk_ids, vectors):
+                        idx.set_embedding(cid, vec)
+                    mode_label = "bm25+embeddings"
+            except Exception:
+                pass
+
+        elapsed = time.monotonic() - t0
+        return {
+            "items_indexed": len(to_index),
+            "chunks": total_chunks,
+            "mode": mode_label,
+            "elapsed_seconds": round(elapsed, 1),
+        }
+    finally:
+        md_cache.close()
+        idx.close()
+
+
+def _handle_workspace_query(
+    name: str, question: str, top_k: int = 5, mode: str = "auto"
+) -> dict:
+    from zotero_cli_cc.core.rag import (
+        bm25_score_chunks,
+        embed_texts,
+        reciprocal_rank_fusion,
+        semantic_score_chunks,
+    )
+    from zotero_cli_cc.core.rag_index import RagIndex
+
+    if not workspace_exists(name):
+        return {"error": f"Workspace '{name}' not found."}
+    idx_path = workspaces_dir() / f"{name}.idx.sqlite"
+    if not idx_path.exists():
+        return {"error": f"No index for workspace '{name}'. Run workspace_index first."}
+
+    idx = RagIndex(idx_path)
+    try:
+        has_embeddings = len(idx.get_all_embeddings()) > 0
+        effective_mode = ("hybrid" if has_embeddings else "bm25") if mode == "auto" else mode
+
+        bm25_results: list[tuple[int, float, dict]] = []
+        semantic_results: list[tuple[int, float, dict]] = []
+
+        if effective_mode in ("bm25", "hybrid"):
+            bm25_results = bm25_score_chunks(idx, question)
+
+        if effective_mode in ("semantic", "hybrid") and has_embeddings:
+            emb_cfg = load_embedding_config()
+            if emb_cfg.is_configured:
+                try:
+                    q_vecs = embed_texts([question], emb_cfg)
+                    if q_vecs:
+                        semantic_results = semantic_score_chunks(idx, q_vecs[0])
+                except Exception:
+                    pass
+
+        if effective_mode == "hybrid" and bm25_results and semantic_results:
+            merged = reciprocal_rank_fusion(bm25_results, semantic_results)
+        elif semantic_results and effective_mode in ("semantic", "hybrid"):
+            merged = semantic_results
+        else:
+            merged = bm25_results
+
+        top = merged[:top_k]
+        return {
+            "results": [
+                {
+                    "rank": i + 1,
+                    "score": round(score, 4),
+                    "item_key": chunk["item_key"],
+                    "source": chunk["source"],
+                    "content": chunk["content"][:500],
+                }
+                for i, (_cid, score, chunk) in enumerate(top)
+            ],
+            "mode": effective_mode,
+        }
+    finally:
+        idx.close()
+
+
+def _resolve_collection_key(reader: ZoteroReader, name_or_key: str) -> str | None:
+    """Resolve a collection name or key to a collection key."""
+    collections = reader.get_collections()
+
+    def _search(colls: list[Collection]) -> str | None:
+        for c in colls:
+            if c.key == name_or_key or c.name.lower() == name_or_key.lower():
+                return c.key
+            found = _search(c.children)
+            if found:
+                return found
+        return None
+
+    return _search(collections)
+
+
+# ---------------------------------------------------------------------------
+# Utility handler functions (cite, stats, update_status)
+# ---------------------------------------------------------------------------
+
+
+def _handle_cite(key: str, style: str = "apa", library: str = "user") -> dict:
+    from zotero_cli_cc.commands.cite import STYLES
+
+    reader = _get_reader(library)
+    item = reader.get_item(key)
+    if item is None:
+        return {"error": f"Item '{key}' not found."}
+    if style not in STYLES:
+        return {"error": f"Unknown style '{style}'. Use 'apa', 'nature', or 'vancouver'."}
+    formatter = STYLES[style]
+    citation = formatter(item)
+    return {"citation": citation, "style": style, "key": key}
+
+
+def _handle_stats(library: str = "user") -> dict:
+    reader = _get_reader(library)
+    return reader.get_stats()
+
+
+def _handle_update_status(
+    key: str | None = None,
+    collection: str | None = None,
+    limit: int = 50,
+    apply: bool = False,
+    library: str = "user",
+) -> dict:
+    import os
+
+    from zotero_cli_cc.core.semantic_scholar import SemanticScholarClient, extract_preprint_info
+
+    cfg = load_config()
+    data_dir = get_data_dir(cfg)
+    db_path = data_dir / "zotero.sqlite"
+    reader = _get_reader(library)
+
+    if key:
+        item = reader.get_item(key)
+        if not item:
+            return {"error": f"Item '{key}' not found."}
+        items = [item]
+    else:
+        items = reader.get_arxiv_preprints(collection=collection, limit=limit)
+
+    if not items:
+        return {"results": [], "published": 0, "checked": 0}
+
+    preprint_items = []
+    for item in items:
+        info = extract_preprint_info(
+            url=item.url,
+            doi=item.doi,
+            extra=item.extra.get("extra") if item.extra else None,
+        )
+        if info:
+            preprint_items.append((item.key, info, item.title))
+
+    if not preprint_items:
+        return {"results": [], "published": 0, "checked": 0}
+
+    api_key = (
+        os.environ.get("S2_API_KEY", "")
+        or os.environ.get("SEMANTIC_SCHOLAR_API_KEY", "")
+        or cfg.semantic_scholar_api_key
+    )
+    client = SemanticScholarClient(api_key=api_key or None)
+    results = []
+    published_count = 0
+
+    try:
+        for item_key, info, title in preprint_items:
+            status = client.check_publication(info)
+            if status and status.is_published:
+                published_count += 1
+                results.append({
+                    "key": item_key,
+                    "title": title,
+                    "published": True,
+                    "venue": status.venue,
+                    "journal": status.journal_name,
+                    "doi": status.doi,
+                    "date": status.publication_date,
+                })
+            else:
+                results.append({
+                    "key": item_key,
+                    "title": title,
+                    "published": False,
+                })
+    finally:
+        client.close()
+
+    if apply and published_count > 0:
+        try:
+            writer = _get_writer(library)
+        except ValueError:
+            return {"results": results, "published": published_count, "checked": len(preprint_items),
+                    "error": "Write credentials not configured. Cannot apply updates."}
+        updated = 0
+        for r in results:
+            if not r["published"]:
+                continue
+            fields: dict[str, str] = {}
+            if r.get("doi"):
+                fields["DOI"] = r["doi"]
+            if r.get("venue"):
+                fields["publicationTitle"] = r["venue"]
+            elif r.get("journal"):
+                fields["publicationTitle"] = r["journal"]
+            if r.get("date"):
+                fields["date"] = r["date"]
+            if fields:
+                try:
+                    writer.update_item(r["key"], fields)
+                    r["updated"] = True
+                    updated += 1
+                except ZoteroWriteError as e:
+                    r["update_error"] = str(e)
+        return {"results": results, "published": published_count, "checked": len(preprint_items), "updated": updated}
+
+    return {"results": results, "published": published_count, "checked": len(preprint_items)}
+
+
+# ---------------------------------------------------------------------------
 # MCP tool definitions
 # ---------------------------------------------------------------------------
 
@@ -969,3 +1508,194 @@ def add_from_pdf(file_path: str, doi_override: str | None = None, library: str =
         library: Library — 'user' (default) or 'group:<id>'.
     """
     return _handle_add_from_pdf(file_path, doi_override, library=library)
+
+
+# ---------------------------------------------------------------------------
+# Workspace tools
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+def workspace_new(name: str, description: str = "") -> dict:
+    """Create a new local workspace for organizing papers by topic.
+
+    Args:
+        name: Workspace name in kebab-case (e.g. 'llm-safety', 'protein-folding').
+        description: Optional description of the workspace topic.
+    """
+    return _handle_workspace_new(name, description)
+
+
+@mcp.tool()
+def workspace_delete(name: str) -> dict:
+    """Delete a workspace.
+
+    Args:
+        name: Name of the workspace to delete.
+    """
+    return _handle_workspace_delete(name)
+
+
+@mcp.tool()
+def workspace_add(name: str, keys: list[str], library: str = "user") -> dict:
+    """Add Zotero items to a workspace by key.
+
+    Args:
+        name: Workspace name.
+        keys: List of Zotero item keys to add (e.g. ['ABC123', 'DEF456']).
+        library: Library — 'user' (default) or 'group:<id>'.
+    """
+    return _handle_workspace_add(name, keys, library=library)
+
+
+@mcp.tool()
+def workspace_remove(name: str, keys: list[str]) -> dict:
+    """Remove items from a workspace by key.
+
+    Args:
+        name: Workspace name.
+        keys: List of Zotero item keys to remove.
+    """
+    return _handle_workspace_remove(name, keys)
+
+
+@mcp.tool()
+def workspace_list() -> dict:
+    """List all local workspaces with their descriptions and item counts."""
+    return _handle_workspace_list()
+
+
+@mcp.tool()
+def workspace_show(name: str, limit: int = 50, library: str = "user") -> dict:
+    """Show items in a workspace with full metadata from Zotero.
+
+    Args:
+        name: Workspace name.
+        limit: Maximum number of items to return (default 50).
+        library: Library — 'user' (default) or 'group:<id>'.
+    """
+    return _handle_workspace_show(name, limit, library=library)
+
+
+@mcp.tool()
+def workspace_export(name: str, fmt: str = "markdown", library: str = "user") -> dict:
+    """Export workspace items in markdown, JSON, or BibTeX format.
+
+    Args:
+        name: Workspace name.
+        fmt: Export format — 'markdown' (default), 'json', or 'bibtex'.
+        library: Library — 'user' (default) or 'group:<id>'.
+    """
+    return _handle_workspace_export(name, fmt, library=library)
+
+
+@mcp.tool()
+def workspace_import(
+    name: str,
+    collection: str | None = None,
+    tag: str | None = None,
+    search_query: str | None = None,
+    library: str = "user",
+) -> dict:
+    """Bulk import items into a workspace from a collection, tag, or search query.
+
+    Args:
+        name: Workspace name.
+        collection: Import all items from this collection (name or key).
+        tag: Import all items with this tag.
+        search_query: Import items matching this search query.
+        library: Library — 'user' (default) or 'group:<id>'.
+    """
+    return _handle_workspace_import(name, collection=collection, tag=tag, search_query=search_query, library=library)
+
+
+@mcp.tool()
+def workspace_search(name: str, query: str, limit: int = 50, library: str = "user") -> dict:
+    """Search items within a workspace by title, author, abstract, or tags.
+
+    Args:
+        name: Workspace name.
+        query: Search query string.
+        limit: Maximum number of results (default 50).
+        library: Library — 'user' (default) or 'group:<id>'.
+    """
+    return _handle_workspace_search(name, query, limit, library=library)
+
+
+@mcp.tool()
+def workspace_index(name: str, force: bool = False, library: str = "user") -> dict:
+    """Build or update RAG index for a workspace (BM25 + optional embeddings).
+
+    Indexes metadata and PDF full text for natural language querying.
+
+    Args:
+        name: Workspace name.
+        force: If True, rebuild index from scratch (default False).
+        library: Library — 'user' (default) or 'group:<id>'.
+    """
+    return _handle_workspace_index(name, force=force, library=library)
+
+
+@mcp.tool()
+def workspace_query(name: str, question: str, top_k: int = 5, mode: str = "auto") -> dict:
+    """Query workspace papers with natural language using RAG retrieval.
+
+    Returns ranked chunks from indexed papers matching the question.
+
+    Args:
+        name: Workspace name.
+        question: Natural language query.
+        top_k: Number of results to return (default 5).
+        mode: Retrieval mode — 'auto' (default), 'bm25', 'semantic', or 'hybrid'.
+    """
+    return _handle_workspace_query(name, question, top_k=top_k, mode=mode)
+
+
+# ---------------------------------------------------------------------------
+# Utility tools
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+def cite(key: str, style: str = "apa", library: str = "user") -> dict:
+    """Format a citation for a Zotero item in APA, Nature, or Vancouver style.
+
+    Args:
+        key: The Zotero item key.
+        style: Citation style — 'apa' (default), 'nature', or 'vancouver'.
+        library: Library — 'user' (default) or 'group:<id>'.
+    """
+    return _handle_cite(key, style, library=library)
+
+
+@mcp.tool()
+def stats(library: str = "user") -> dict:
+    """Show library statistics: total items, PDFs, notes, types, collections, top tags.
+
+    Args:
+        library: Library — 'user' (default) or 'group:<id>'.
+    """
+    return _handle_stats(library=library)
+
+
+@mcp.tool()
+def update_status(
+    key: str | None = None,
+    collection: str | None = None,
+    limit: int = 50,
+    apply: bool = False,
+    library: str = "user",
+) -> dict:
+    """Check if preprints (arXiv, bioRxiv, medRxiv) have been formally published.
+
+    Uses the Semantic Scholar API to look up publication status.
+    Set apply=True to update Zotero metadata for published items.
+
+    Args:
+        key: Optional single item key to check.
+        collection: Optional collection name to filter items.
+        limit: Maximum number of items to check (default 50).
+        apply: If True, update Zotero metadata for published items (default False).
+        library: Library — 'user' (default) or 'group:<id>'.
+    """
+    return _handle_update_status(key=key, collection=collection, limit=limit, apply=apply, library=library)

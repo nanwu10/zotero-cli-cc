@@ -828,3 +828,371 @@ class TestMcpWriteErrorHandling:
         self.writer.rename_collection.side_effect = self.ZoteroWriteError("Not found")
         result = _handle_collection_rename("COL1", "New")
         assert result["error"] == "Not found"
+
+
+# ---------------------------------------------------------------------------
+# Workspace handler tests
+# ---------------------------------------------------------------------------
+
+
+class TestHandleWorkspaceNew:
+    @patch("zotero_cli_cc.mcp_server.save_workspace")
+    @patch("zotero_cli_cc.mcp_server.workspace_exists", return_value=False)
+    def test_creates_workspace(self, mock_exists, mock_save):
+        from zotero_cli_cc.mcp_server import _handle_workspace_new
+
+        result = _handle_workspace_new("my-ws", "test workspace")
+        assert result["name"] == "my-ws"
+        assert "created" in result
+        mock_save.assert_called_once()
+
+    def test_invalid_name(self):
+        from zotero_cli_cc.mcp_server import _handle_workspace_new
+
+        result = _handle_workspace_new("BAD NAME!")
+        assert "error" in result
+
+    @patch("zotero_cli_cc.mcp_server.workspace_exists", return_value=True)
+    def test_already_exists(self, mock_exists):
+        from zotero_cli_cc.mcp_server import _handle_workspace_new
+
+        result = _handle_workspace_new("my-ws")
+        assert "error" in result
+        assert "already exists" in result["error"]
+
+
+class TestHandleWorkspaceDelete:
+    @patch("zotero_cli_cc.mcp_server.delete_workspace")
+    @patch("zotero_cli_cc.mcp_server.workspace_exists", return_value=True)
+    def test_deletes(self, mock_exists, mock_delete):
+        from zotero_cli_cc.mcp_server import _handle_workspace_delete
+
+        result = _handle_workspace_delete("my-ws")
+        assert result["deleted"] is True
+        mock_delete.assert_called_once_with("my-ws")
+
+    @patch("zotero_cli_cc.mcp_server.workspace_exists", return_value=False)
+    def test_not_found(self, mock_exists):
+        from zotero_cli_cc.mcp_server import _handle_workspace_delete
+
+        result = _handle_workspace_delete("missing")
+        assert "error" in result
+
+
+class TestHandleWorkspaceAdd:
+    @patch("zotero_cli_cc.mcp_server.save_workspace")
+    @patch("zotero_cli_cc.mcp_server.load_workspace")
+    @patch("zotero_cli_cc.mcp_server.workspace_exists", return_value=True)
+    @patch("zotero_cli_cc.mcp_server._get_reader")
+    def test_adds_items(self, mock_reader, mock_exists, mock_load, mock_save):
+        from zotero_cli_cc.mcp_server import _handle_workspace_add
+
+        from zotero_cli_cc.core.workspace import Workspace
+
+        ws = Workspace(name="ws", created="2024-01-01")
+        mock_load.return_value = ws
+        reader = MagicMock()
+        reader.get_item.return_value = _make_item()
+        mock_reader.return_value = reader
+
+        result = _handle_workspace_add("ws", ["ABC123"])
+        assert "ABC123" in result["added"]
+        mock_save.assert_called_once()
+
+    @patch("zotero_cli_cc.mcp_server.workspace_exists", return_value=False)
+    def test_not_found(self, mock_exists):
+        from zotero_cli_cc.mcp_server import _handle_workspace_add
+
+        result = _handle_workspace_add("missing", ["K1"])
+        assert "error" in result
+
+
+class TestHandleWorkspaceRemove:
+    @patch("zotero_cli_cc.mcp_server.save_workspace")
+    @patch("zotero_cli_cc.mcp_server.load_workspace")
+    @patch("zotero_cli_cc.mcp_server.workspace_exists", return_value=True)
+    def test_removes_items(self, mock_exists, mock_load, mock_save):
+        from zotero_cli_cc.mcp_server import _handle_workspace_remove
+
+        from zotero_cli_cc.core.workspace import Workspace, WorkspaceItem
+
+        ws = Workspace(name="ws", created="2024-01-01", items=[
+            WorkspaceItem(key="ABC123", title="Paper", added="2024-01-01")
+        ])
+        mock_load.return_value = ws
+
+        result = _handle_workspace_remove("ws", ["ABC123", "MISSING"])
+        assert "ABC123" in result["removed"]
+        assert "MISSING" in result["not_in_workspace"]
+
+
+class TestHandleWorkspaceList:
+    @patch("zotero_cli_cc.mcp_server.list_workspaces")
+    def test_lists(self, mock_list):
+        from zotero_cli_cc.mcp_server import _handle_workspace_list
+
+        from zotero_cli_cc.core.workspace import Workspace
+
+        mock_list.return_value = [
+            Workspace(name="ws1", created="2024-01-01", description="Test"),
+        ]
+        result = _handle_workspace_list()
+        assert len(result["workspaces"]) == 1
+        assert result["workspaces"][0]["name"] == "ws1"
+
+    @patch("zotero_cli_cc.mcp_server.list_workspaces")
+    def test_empty(self, mock_list):
+        from zotero_cli_cc.mcp_server import _handle_workspace_list
+
+        mock_list.return_value = []
+        result = _handle_workspace_list()
+        assert result["workspaces"] == []
+
+
+class TestHandleWorkspaceShow:
+    @patch("zotero_cli_cc.mcp_server._get_reader")
+    @patch("zotero_cli_cc.mcp_server.load_workspace")
+    @patch("zotero_cli_cc.mcp_server.workspace_exists", return_value=True)
+    def test_shows_items(self, mock_exists, mock_load, mock_reader):
+        from zotero_cli_cc.mcp_server import _handle_workspace_show
+
+        from zotero_cli_cc.core.workspace import Workspace, WorkspaceItem
+
+        ws = Workspace(name="ws", created="2024-01-01", items=[
+            WorkspaceItem(key="ABC123", title="Paper", added="2024-01-01")
+        ])
+        mock_load.return_value = ws
+        reader = MagicMock()
+        reader.get_item.return_value = _make_item()
+        mock_reader.return_value = reader
+
+        result = _handle_workspace_show("ws")
+        assert len(result["items"]) == 1
+        assert result["items"][0]["key"] == "ABC123"
+        assert result["total"] == 1
+
+
+class TestHandleWorkspaceExport:
+    @patch("zotero_cli_cc.mcp_server._get_reader")
+    @patch("zotero_cli_cc.mcp_server.load_workspace")
+    @patch("zotero_cli_cc.mcp_server.workspace_exists", return_value=True)
+    def test_export_markdown(self, mock_exists, mock_load, mock_reader):
+        from zotero_cli_cc.mcp_server import _handle_workspace_export
+
+        from zotero_cli_cc.core.workspace import Workspace, WorkspaceItem
+
+        ws = Workspace(name="ws", created="2024-01-01", description="Test", items=[
+            WorkspaceItem(key="ABC123", title="Paper", added="2024-01-01")
+        ])
+        mock_load.return_value = ws
+        reader = MagicMock()
+        reader.get_item.return_value = _make_item()
+        mock_reader.return_value = reader
+
+        result = _handle_workspace_export("ws", "markdown")
+        assert result["format"] == "markdown"
+        assert "# Workspace: ws" in result["content"]
+
+    @patch("zotero_cli_cc.mcp_server._get_reader")
+    @patch("zotero_cli_cc.mcp_server.load_workspace")
+    @patch("zotero_cli_cc.mcp_server.workspace_exists", return_value=True)
+    def test_export_json(self, mock_exists, mock_load, mock_reader):
+        from zotero_cli_cc.mcp_server import _handle_workspace_export
+
+        from zotero_cli_cc.core.workspace import Workspace, WorkspaceItem
+
+        ws = Workspace(name="ws", created="2024-01-01", items=[
+            WorkspaceItem(key="ABC123", title="Paper", added="2024-01-01")
+        ])
+        mock_load.return_value = ws
+        reader = MagicMock()
+        reader.get_item.return_value = _make_item()
+        mock_reader.return_value = reader
+
+        result = _handle_workspace_export("ws", "json")
+        assert result["format"] == "json"
+        assert len(result["items"]) == 1
+
+
+class TestHandleWorkspaceImport:
+    @patch("zotero_cli_cc.mcp_server.save_workspace")
+    @patch("zotero_cli_cc.mcp_server.load_workspace")
+    @patch("zotero_cli_cc.mcp_server.workspace_exists", return_value=True)
+    @patch("zotero_cli_cc.mcp_server._get_reader")
+    def test_import_by_search(self, mock_reader, mock_exists, mock_load, mock_save):
+        from zotero_cli_cc.mcp_server import _handle_workspace_import
+
+        from zotero_cli_cc.core.workspace import Workspace
+
+        ws = Workspace(name="ws", created="2024-01-01")
+        mock_load.return_value = ws
+        reader = MagicMock()
+        reader.search.return_value = SearchResult(items=[_make_item()], total=1, query="q")
+        mock_reader.return_value = reader
+
+        result = _handle_workspace_import("ws", search_query="test")
+        assert result["added"] == 1
+        mock_save.assert_called_once()
+
+    @patch("zotero_cli_cc.mcp_server.workspace_exists", return_value=True)
+    def test_no_filter_error(self, mock_exists):
+        from zotero_cli_cc.mcp_server import _handle_workspace_import
+
+        result = _handle_workspace_import("ws")
+        assert "error" in result
+
+
+class TestHandleWorkspaceSearch:
+    @patch("zotero_cli_cc.mcp_server._get_reader")
+    @patch("zotero_cli_cc.mcp_server.load_workspace")
+    @patch("zotero_cli_cc.mcp_server.workspace_exists", return_value=True)
+    def test_searches(self, mock_exists, mock_load, mock_reader):
+        from zotero_cli_cc.mcp_server import _handle_workspace_search
+
+        from zotero_cli_cc.core.workspace import Workspace, WorkspaceItem
+
+        ws = Workspace(name="ws", created="2024-01-01", items=[
+            WorkspaceItem(key="ABC123", title="Test Paper", added="2024-01-01")
+        ])
+        mock_load.return_value = ws
+        reader = MagicMock()
+        reader.get_item.return_value = _make_item()
+        mock_reader.return_value = reader
+
+        result = _handle_workspace_search("ws", "test")
+        assert result["total"] == 1
+        assert result["items"][0]["key"] == "ABC123"
+
+    @patch("zotero_cli_cc.mcp_server._get_reader")
+    @patch("zotero_cli_cc.mcp_server.load_workspace")
+    @patch("zotero_cli_cc.mcp_server.workspace_exists", return_value=True)
+    def test_no_match(self, mock_exists, mock_load, mock_reader):
+        from zotero_cli_cc.mcp_server import _handle_workspace_search
+
+        from zotero_cli_cc.core.workspace import Workspace, WorkspaceItem
+
+        ws = Workspace(name="ws", created="2024-01-01", items=[
+            WorkspaceItem(key="ABC123", title="Paper", added="2024-01-01")
+        ])
+        mock_load.return_value = ws
+        reader = MagicMock()
+        reader.get_item.return_value = _make_item()
+        mock_reader.return_value = reader
+
+        result = _handle_workspace_search("ws", "zzzznotfound")
+        assert result["total"] == 0
+        assert result["items"] == []
+
+
+# ---------------------------------------------------------------------------
+# Utility handler tests (cite, stats, update_status)
+# ---------------------------------------------------------------------------
+
+
+class TestHandleCite:
+    @patch("zotero_cli_cc.mcp_server._get_reader")
+    def test_apa_citation(self, mock_reader):
+        from zotero_cli_cc.mcp_server import _handle_cite
+
+        reader = MagicMock()
+        item = _make_item()
+        item.extra = {}
+        reader.get_item.return_value = item
+        mock_reader.return_value = reader
+
+        result = _handle_cite("ABC123", "apa")
+        assert result["style"] == "apa"
+        assert "Doe" in result["citation"]
+        assert result["key"] == "ABC123"
+
+    @patch("zotero_cli_cc.mcp_server._get_reader")
+    def test_nature_citation(self, mock_reader):
+        from zotero_cli_cc.mcp_server import _handle_cite
+
+        reader = MagicMock()
+        item = _make_item()
+        item.extra = {}
+        reader.get_item.return_value = item
+        mock_reader.return_value = reader
+
+        result = _handle_cite("ABC123", "nature")
+        assert result["style"] == "nature"
+        assert "Test Paper" in result["citation"]
+
+    @patch("zotero_cli_cc.mcp_server._get_reader")
+    def test_not_found(self, mock_reader):
+        from zotero_cli_cc.mcp_server import _handle_cite
+
+        reader = MagicMock()
+        reader.get_item.return_value = None
+        mock_reader.return_value = reader
+
+        result = _handle_cite("MISSING", "apa")
+        assert "error" in result
+
+    @patch("zotero_cli_cc.mcp_server._get_reader")
+    def test_invalid_style(self, mock_reader):
+        from zotero_cli_cc.mcp_server import _handle_cite
+
+        reader = MagicMock()
+        reader.get_item.return_value = _make_item()
+        mock_reader.return_value = reader
+
+        result = _handle_cite("ABC123", "chicago")
+        assert "error" in result
+
+
+class TestHandleStats:
+    @patch("zotero_cli_cc.mcp_server._get_reader")
+    def test_returns_stats(self, mock_reader):
+        from zotero_cli_cc.mcp_server import _handle_stats
+
+        reader = MagicMock()
+        reader.get_stats.return_value = {
+            "total_items": 100,
+            "pdf_attachments": 80,
+            "notes": 50,
+            "by_type": {"journalArticle": 70},
+            "collections": {"ML": 30},
+            "top_tags": {"AI": 20},
+        }
+        mock_reader.return_value = reader
+
+        result = _handle_stats()
+        assert result["total_items"] == 100
+        assert result["pdf_attachments"] == 80
+
+
+class TestHandleUpdateStatus:
+    @patch("zotero_cli_cc.mcp_server._get_reader")
+    def test_no_items(self, mock_reader):
+        from zotero_cli_cc.mcp_server import _handle_update_status
+
+        reader = MagicMock()
+        reader.get_arxiv_preprints.return_value = []
+        mock_reader.return_value = reader
+
+        with patch("zotero_cli_cc.mcp_server.load_config") as mock_cfg, \
+             patch("zotero_cli_cc.mcp_server.get_data_dir") as mock_dir:
+            mock_cfg.return_value = MagicMock(semantic_scholar_api_key="")
+            mock_dir.return_value = Path("/fake")
+            result = _handle_update_status()
+
+        assert result["checked"] == 0
+        assert result["published"] == 0
+
+    @patch("zotero_cli_cc.mcp_server._get_reader")
+    def test_single_item_not_found(self, mock_reader):
+        from zotero_cli_cc.mcp_server import _handle_update_status
+
+        reader = MagicMock()
+        reader.get_item.return_value = None
+        mock_reader.return_value = reader
+
+        with patch("zotero_cli_cc.mcp_server.load_config") as mock_cfg, \
+             patch("zotero_cli_cc.mcp_server.get_data_dir") as mock_dir:
+            mock_cfg.return_value = MagicMock(semantic_scholar_api_key="")
+            mock_dir.return_value = Path("/fake")
+            result = _handle_update_status(key="MISSING")
+
+        assert "error" in result
